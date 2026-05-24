@@ -1,4 +1,4 @@
-package com.sevalink.sevalink_app
+package com.sevalink.sevalink
 
 import io.flutter.embedding.android.FlutterActivity
 

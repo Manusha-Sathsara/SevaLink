@@ -14,7 +14,7 @@ public interface SearchRepository extends JpaRepository<Worker, Long> {
     @Query("SELECT w FROM Worker w WHERE " +
             "LOWER(w.category.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(w.bio) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(w.user.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "LOWER(w.user.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "ORDER BY w.rating DESC")
     List<Worker> searchByKeyword(@Param("keyword") String keyword);
 
@@ -31,7 +31,7 @@ public interface SearchRepository extends JpaRepository<Worker, Long> {
     @Query("SELECT w FROM Worker w WHERE " +
             "(LOWER(w.category.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(w.bio) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(w.user.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "LOWER(w.user.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "AND w.isAvailable = :available " +
             "ORDER BY w.rating DESC")
     List<Worker> searchByKeywordAndAvailability(
@@ -62,7 +62,7 @@ public interface SearchRepository extends JpaRepository<Worker, Long> {
     @Query("SELECT w FROM Worker w WHERE " +
             "(LOWER(w.category.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(w.bio) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(w.user.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "LOWER(w.user.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "AND (:categoryName IS NULL OR LOWER(w.category.name) = LOWER(:categoryName)) " +
             "AND (:available IS NULL OR w.isAvailable = :available) " +
             "AND (:lat IS NULL OR :lng IS NULL OR " +
