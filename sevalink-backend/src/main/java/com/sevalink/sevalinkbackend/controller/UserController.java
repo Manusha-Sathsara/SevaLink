@@ -44,7 +44,7 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody User loginRequest) {
         return userService.findByEmail(loginRequest.getEmail())
-                .filter(u -> u.getPasswordHash().equals(loginRequest.getPasswordHash()))
+                .filter(u -> u.getPassword().equals(loginRequest.getPassword()))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(401).build());
     }

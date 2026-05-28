@@ -25,8 +25,8 @@ public class QuotationService {
     // Worker sends a quotation
     public Quotation sendQuotation(Quotation quotation) {
         quotationRepository.findByJobPostIdAndWorkerId(
-                quotation.getJobPost().getId(),
-                quotation.getWorker().getId())
+                        quotation.getJobPost().getId(),
+                        quotation.getWorker().getId())
                 .ifPresent(q -> {
                     throw new RuntimeException("Already sent a quotation for this job");
                 });
@@ -91,36 +91,5 @@ public class QuotationService {
                 .orElseThrow(() -> new RuntimeException("Quotation not found"));
         quotation.setStatus("REJECTED");
         return quotationRepository.save(quotation);
-    }
-
-    // Get contact details after acceptance (phone reveal)
-    public java.util.Map<String, Object> getContactDetails(Long quotationId) {
-        Quotation quotation = quotationRepository.findById(quotationId)
-                .orElseThrow(() -> new RuntimeException("Quotation not found"));
-
-        if (!quotation.getStatus().equals("ACCEPTED")) {
-            throw new RuntimeException("Contact details only available after acceptance");
-        }
-
-        java.util.Map<String, Object> contact = new java.util.HashMap<>();
-
-        // Worker info (for client to see)
-        java.util.Map<String, Object> workerContact = new java.util.HashMap<>();
-        workerContact.put("name",   quotation.getWorker().getUser().getFullName());
-        workerContact.put("phone",  quotation.getWorker().getUser().getPhoneNumber());
-        workerContact.put("rating", quotation.getWorker().getRating());
-
-        // Client info (for worker to see)
-        java.util.Map<String, Object> clientContact = new java.util.HashMap<>();
-        clientContact.put("name",     quotation.getJobPost().getClient().getFullName());
-        clientContact.put("phone",    quotation.getJobPost().getClient().getPhoneNumber());
-        clientContact.put("location", quotation.getJobPost().getLocationName());
-
-        contact.put("worker",      workerContact);
-        contact.put("client",      clientContact);
-        contact.put("jobTitle",    quotation.getJobPost().getTitle());
-        contact.put("agreedPrice", quotation.getProposedPrice());
-
-        return contact;
     }
 }

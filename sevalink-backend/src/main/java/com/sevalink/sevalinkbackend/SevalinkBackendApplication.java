@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class SevalinkBackendApplication {
 
     public static void main(String[] args) {
-        EnvLoader.load();
         SpringApplication.run(SevalinkBackendApplication.class, args);
     }
 

@@ -25,7 +25,4 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
             "AND w.isAvailable = true " +
             "ORDER BY w.rating DESC")
     List<Worker> searchWorkers(@Param("keyword") String keyword);
-
-    // Get Top Rated Workers for Dashboard
-    List<Worker> findTop10ByIsAvailableTrueOrderByRatingDesc();
 }

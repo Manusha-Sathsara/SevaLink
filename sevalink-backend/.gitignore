@@ -31,10 +31,3 @@ build/
 
 ### VS Code ###
 .vscode/
-
-# Local environment configs
-.env
-
-# Firebase service account credentials key (Private Key)
-src/main/resources/firebase-service-account.json
-
