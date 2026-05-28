@@ -21,4 +21,20 @@ class ApiEndpoints {
   
   // Client Endpoints
   static String get clientDashboard => '$baseUrl/client/dashboard';
+
+  // Chat Endpoints
+  static String get chatRooms => '$baseUrl/chat/rooms';
+  static String chatRoomWith(int otherUserId) => '$baseUrl/chat/rooms/with/$otherUserId';
+  static String chatHistory(int roomId) => '$baseUrl/chat/messages/$roomId';
+  static String markChatRead(int roomId) => '$baseUrl/chat/messages/$roomId/read';
+
+  // WebSocket connection base path (translates http:// to ws://)
+  static String get wsBaseUrl {
+    final httpUrl = baseUrl;
+    if (httpUrl.startsWith('https://')) {
+      return httpUrl.replaceFirst('https://', 'wss://').replaceFirst('/api', '/ws');
+    }
+    return httpUrl.replaceFirst('http://', 'ws://').replaceFirst('/api', '/ws');
+  }
+  static String get chatWs => '$wsBaseUrl/chat';
 }

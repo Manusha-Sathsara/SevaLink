@@ -5,6 +5,7 @@ import 'job_details_screen.dart';
 import 'my_jobs_screen.dart';
 import '../../../data/models/job.dart';
 import '../../../providers/auth_provider.dart';
+import '../../chat/screens/chat_list_screen.dart';
 
 //  Local UI model
 class JobListing {
@@ -111,7 +112,7 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
       case 1:
         return const MyJobsScreen();
       case 2:
-        return const _ChatPage();
+        return const ChatListScreen();
       case 3:
         return const WorkerProfileScreen(showBackButton: false);
       default:

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 // Assuming this is the correct path based on the original codebase structure
 import '../../../providers/auth_provider.dart';
 import '../../../providers/client_dashboard_provider.dart';
+import '../../../providers/chat_provider.dart';
+import '../../chat/screens/chat_list_screen.dart';
 
 // ============================================================================
 // DOMAIN MODELS (Mock Data Structures)
@@ -157,38 +159,112 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       // Catch exceptions to ensure UI layout stability if provider fails
     }
 
+  Widget _buildBody(String displayFullName) {
+    switch (_currentNavIndex) {
+      case 0:
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              // Implementation of the overlapping Z-axis header design
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  _buildOrangeHeader(displayFullName),
+
+                  // Positioned padding forces the quick action cards to straddle the header boundary
+                  Padding(
+                    padding: const EdgeInsets.only(top: 250.0),
+                    child: _buildQuickActionCards(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 48),
+              _buildServiceCategories(),
+              const SizedBox(height: 32),
+              _buildTopRatedWorkers(),
+              const SizedBox(height: 32),
+              _buildTrustBanner(),
+              const SizedBox(
+                height: 40,
+              ), // Ensures scroll clearance above the bottom navigation
+            ],
+          ),
+        );
+      case 1:
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Text(
+              'My Jobs is coming soon',
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+          ),
+        );
+      case 2:
+        return const ChatListScreen();
+      default:
+        return const Center(child: Text('Dashboard'));
+    }
+  }
+
+  void _initiateChatWithWorker(WorkerProfile worker) async {
+    if (worker.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid worker profile ID')),
+      );
+      return;
+    }
+    
+    // Show a loading indicator dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator(color: Color(0xFF006B3D))),
+    );
+    
+    try {
+      final room = await ref.read(chatProvider.notifier).startChatWithUser(worker.id!);
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading dialog
+        if (room != null) {
+          context.push(
+            '/chat/room/${room.id}',
+            extra: {
+              'otherUserName': worker.name,
+              'otherUserRole': 'WORKER',
+            },
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start chat: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Graceful fallback for authentication state retrieval
+    String displayFullName = "Dilini Rajapaksa";
+
+    try {
+      final user = ref.watch(authProvider).user;
+      if (user != null && user.fullName != null && user.fullName!.isNotEmpty) {
+        displayFullName = user.fullName!;
+      }
+    } catch (_) {
+      // Catch exceptions to ensure UI layout stability if provider fails
+    }
+
     return Scaffold(
       backgroundColor: const Color(
         0xFFF8F9FA,
       ), // Neutral background to enhance contrast
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Implementation of the overlapping Z-axis header design
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                _buildOrangeHeader(displayFullName),
-
-                // Positioned padding forces the quick action cards to straddle the header boundary
-                Padding(
-                  padding: const EdgeInsets.only(top: 250.0),
-                  child: _buildQuickActionCards(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 48),
-            _buildServiceCategories(),
-            const SizedBox(height: 32),
-            _buildTopRatedWorkers(),
-            const SizedBox(height: 32),
-            _buildTrustBanner(),
-            const SizedBox(
-              height: 40,
-            ), // Ensures scroll clearance above the bottom navigation
-          ],
-        ),
-      ),
+      body: _buildBody(displayFullName),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
@@ -572,169 +648,172 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 separatorBuilder: (context, index) => const SizedBox(height: 16),
                 itemBuilder: (context, index) {
                   final worker = workers[index];
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            worker.imageUrl,
-                            width: 90,
-                            height: 90,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 90,
-                                height: 90,
-                                color: Colors.grey.shade100,
-                                child: Icon(
-                                  Icons.person,
-                                  color: Colors.grey.shade300,
-                                  size: 40,
-                                ),
-                              );
-                            },
+                  return GestureDetector(
+                    onTap: () => _initiateChatWithWorker(worker),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 4),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      worker.name,
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.network(
+                              worker.imageUrl,
+                              width: 90,
+                              height: 90,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 90,
+                                  height: 90,
+                                  color: Colors.grey.shade100,
+                                  child: Icon(
+                                    Icons.person,
+                                    color: Colors.grey.shade300,
+                                    size: 40,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        worker.name,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Rs. ${worker.hourlyRate}',
                                       style: const TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.bold,
+                                        color: Color(0xFFE65100),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      worker.profession,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade700,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      'per hour',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Row(
+                                      children: List.generate(5, (starIndex) {
+                                        IconData iconData;
+                                        if (starIndex < worker.rating.floor()) {
+                                          iconData = Icons.star_rounded;
+                                        } else if (starIndex < worker.rating) {
+                                          iconData = Icons.star_half_rounded;
+                                        } else {
+                                          iconData = Icons.star_outline_rounded;
+                                        }
+                                        return Icon(
+                                          iconData,
+                                          color: const Color(0xFFFFC107),
+                                          size: 18,
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '${worker.rating}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                         color: Colors.black87,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ),
-                                  Text(
-                                    'Rs. ${worker.hourlyRate}',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFE65100),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    worker.profession,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  Text(
-                                    'per hour',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Row(
-                                    children: List.generate(5, (starIndex) {
-                                      IconData iconData;
-                                      if (starIndex < worker.rating.floor()) {
-                                        iconData = Icons.star_rounded;
-                                      } else if (starIndex < worker.rating) {
-                                        iconData = Icons.star_half_rounded;
-                                      } else {
-                                        iconData = Icons.star_outline_rounded;
-                                      }
-                                      return Icon(
-                                        iconData,
-                                        color: const Color(0xFFFFC107),
-                                        size: 18,
-                                      );
-                                    }),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${worker.rating}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '(${worker.reviewCount})',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              if (worker.isVerified)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFF0E5),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.verified_outlined,
-                                        color: Color(0xFFE65100),
-                                        size: 16,
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '(${worker.reviewCount})',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 14,
                                       ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Seva Verified',
-                                        style: TextStyle(
-                                          color: Color(0xFFE65100),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                            ],
+                                const SizedBox(height: 12),
+                                if (worker.isVerified)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF0E5),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.verified_outlined,
+                                          color: Color(0xFFE65100),
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Seva Verified',
+                                          style: TextStyle(
+                                            color: Color(0xFFE65100),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },
