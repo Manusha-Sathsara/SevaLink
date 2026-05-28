@@ -35,10 +35,27 @@ public class JobPostController {
         return jobPostService.getAllOpenJobs();
     }
 
+    // Worker feed — alias for getAllOpenJobs (used by worker app UI)
+    // GET http://localhost:8080/api/jobs/feed
+    @GetMapping("/feed")
+    public List<JobPost> getWorkerFeed() {
+        return jobPostService.getAllOpenJobs();
+    }
+
     // Worker sees nearby jobs
     // GET http://localhost:8080/api/jobs/nearby?lat=6.9271&lng=79.8612&radius=10
     @GetMapping("/nearby")
     public List<JobPost> getNearbyJobs(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(required = false) Double radius) {
+        return jobPostService.getNearbyJobs(lat, lng, radius);
+    }
+
+    // Worker feed nearby — alias for getNearbyJobs
+    // GET http://localhost:8080/api/jobs/feed/nearby?lat=6.9271&lng=79.8612&radius=10
+    @GetMapping("/feed/nearby")
+    public List<JobPost> getFeedNearby(
             @RequestParam Double lat,
             @RequestParam Double lng,
             @RequestParam(required = false) Double radius) {
