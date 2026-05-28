@@ -52,7 +52,6 @@ public class SecurityConfig {
 //                                "/api/auth/me"
                                 ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers("/ws/**").permitAll()
 
                         // Role-based protected endpoints
                         .requestMatchers("/api/client/**").hasRole("CLIENT")
