@@ -26,9 +26,7 @@ class _ClientProfileScreenState extends ConsumerState<ClientProfileScreen> {
         setState(() => _currentNavIndex = 1);
         break;
       case 2:
-        // TODO: Add client chat route when available
-        // context.go('/client/chat');
-        setState(() => _currentNavIndex = 2);
+        context.go('/chat');
         break;
       case 3:
         // Already on profile screen; just update index

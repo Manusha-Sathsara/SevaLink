@@ -75,9 +75,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           setState(() => _currentNavIndex = 1);
           break;
         case 2:
-          // Chat screen placeholder
-          // context.go('/client/chat'); // Uncomment when route exists
-          setState(() => _currentNavIndex = 2);
+          // Navigate to chat
+          context.go('/chat');
           break;
         case 3:
           // Navigate to profile, replace current route for smoother UX

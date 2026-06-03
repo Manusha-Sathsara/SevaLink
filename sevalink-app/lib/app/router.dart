@@ -16,6 +16,8 @@ import '../features/worker/screens/job_details_screen.dart';
 import '../features/worker/screens/send_quote_screen.dart';
 import '../features/worker/screens/worker_profile_screen.dart';
 import '../features/profile/screens/client_profile_screen.dart';
+import '../features/chat/screens/chat_list_screen.dart';
+import '../features/chat/screens/chat_room_screen.dart';
 import '../data/models/job.dart';
 
 class RouterNotifier extends ChangeNotifier {
@@ -130,6 +132,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/worker/profile',
         builder: (context, state) =>
             const WorkerProfileScreen(showBackButton: true),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) => const ChatListScreen(showBackButton: true),
+      ),
+      GoRoute(
+        path: '/chat/room',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return ChatRoomScreen(
+            chatRoomId: extra['chatRoomId'] as int?,
+            recipientId: extra['recipientId'] as int?,
+            recipientName: extra['recipientName'] as String,
+            recipientRole: extra['recipientRole'] as String,
+          );
+        },
       ),
     ],
   );
