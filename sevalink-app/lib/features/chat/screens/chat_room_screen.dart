@@ -275,7 +275,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                             }
 
                             // Trigger scroll to bottom on new messages
-                            ref.listen(chatMessagesProvider(_activeRoomId!), (prev, next) {
+                            ref.listen<AsyncValue<List<ChatMessageModel>>>(chatMessagesProvider(_activeRoomId!), (prev, next) {
                               if (prev?.value?.length != next.value?.length) {
                                 _scrollToBottomDelayed();
                               }

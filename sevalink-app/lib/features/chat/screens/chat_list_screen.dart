@@ -322,7 +322,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                                         if (hasUnread) ...[
                                           const SizedBox(width: 8),
                                           Container(
-                                            minWidth: 20,
+                                            constraints: const BoxConstraints(minWidth: 20),
                                             height: 20,
                                             padding: const EdgeInsets.all(4),
                                             decoration: const BoxDecoration(
