@@ -73,19 +73,27 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
 }
 
 // Provider for active conversation messages (polled every 3 seconds) using NotifierProvider.family
-final chatMessagesProvider = NotifierProvider.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(
-  (ref, roomId) => ChatMessagesNotifier(roomId),
-);
+// Provider for active conversation messages (polled every 3 seconds) using NotifierProvider.family
+final chatMessagesProvider = NotifierProvider.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>((ref, roomId) => ChatMessagesNotifier());
 
-class ChatMessagesNotifier extends Notifier<AsyncValue<List<ChatMessageModel>>> {
-  final int _roomId;
+class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
+  // Removed explicit constructor; roomId will be set in build()
+  late int _roomId;
   late ChatRepository _repository;
   Timer? _pollingTimer;
 
-  ChatMessagesNotifier(this._roomId);
-
   @override
-  AsyncValue<List<ChatMessageModel>> build() {
+  AsyncValue<List<ChatMessageModel>> build(int roomId) {
+    _roomId = roomId;
+    _repository = ref.watch(chatRepositoryProvider);
+    fetchMessages();
+    _startPolling();
+    ref.onDispose(() => _pollingTimer?.cancel());
+    return const AsyncValue.loading();
+  }
+  @override
+  AsyncValue<List<ChatMessageModel>> build(int roomId) {
+    _roomId = roomId;
     _repository = ref.watch(chatRepositoryProvider);
     fetchMessages();
     _startPolling();
