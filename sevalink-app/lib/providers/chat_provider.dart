@@ -2,9 +2,9 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'auth_provider.dart';
 import '../data/models/chat_models.dart';
 import '../data/repositories/chat_repository.dart';
+import 'auth_provider.dart'; // provides dioClientProvider
 
 // Repository provider
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
@@ -15,24 +15,22 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 // -------------------------------------------------------------------
 // Unread messages count provider
 // -------------------------------------------------------------------
-final unreadMessagesCountProvider =
-    NotifierProvider<UnreadMessagesCountNotifier, int>(
-        UnreadMessagesCountNotifier.new);
+final unreadMessagesCountProvider = AutoDisposeNotifierProvider<UnreadMessagesCountNotifier, int>((ref) => UnreadMessagesCountNotifier());
 
-class UnreadMessagesCountNotifier extends Notifier<int> {
+class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
   late final ChatRepository _repository;
   Timer? _timer;
 
   @override
   int build() {
-    _repository = ref.watch(chatRepositoryProvider);
-    fetchCount();
-    _timer = Timer.periodic(const Duration(seconds: 10), (_) => fetchCount());
+    _repository = ref.read(chatRepositoryProvider);
+    _updateCount();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _updateCount());
     ref.onDispose(() => _timer?.cancel());
     return 0;
   }
 
-  Future<void> fetchCount() async {
+  Future<void> _updateCount() async {
     try {
       final count = await _repository.getUnreadCount();
       state = count;
@@ -43,64 +41,63 @@ class UnreadMessagesCountNotifier extends Notifier<int> {
 // -------------------------------------------------------------------
 // Chat rooms provider
 // -------------------------------------------------------------------
-final chatRoomsProvider =
-    NotifierProvider<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>(
-        ChatRoomsNotifier.new);
+final chatRoomsProvider = AutoDisposeNotifierProvider<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>((ref) => ChatRoomsNotifier());
 
-class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
+class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomModel>>> {
   late final ChatRepository _repository;
-  Timer? _pollingTimer;
+  Timer? _timer;
 
   @override
   AsyncValue<List<ChatRoomModel>> build() {
-    _repository = ref.watch(chatRepositoryProvider);
-    fetchRooms();
-    _pollingTimer =
-        Timer.periodic(const Duration(seconds: 6), (_) => fetchRooms());
-    ref.onDispose(() => _pollingTimer?.cancel());
+    _repository = ref.read(chatRepositoryProvider);
+    _fetchRooms();
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchRooms());
+    ref.onDispose(() => _timer?.cancel());
     return const AsyncValue.loading();
   }
 
-  Future<void> fetchRooms() async {
+  Future<void> _fetchRooms() async {
     try {
       final rooms = await _repository.getChatRooms();
       state = AsyncValue.data(rooms);
-    } catch (e, stack) {
-      if (state is! AsyncData) {
-        state = AsyncValue.error(e, stack);
-      }
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
     }
   }
 
+  // Exposed method for UI to manually refresh
+  Future<void> fetchRooms() => _fetchRooms();
+
   Future<Map<String, dynamic>> initializeRoom(int recipientId) async {
-    final roomData = await _repository.getOrCreateRoom(recipientId);
-    fetchRooms();
-    return roomData;
+    final data = await _repository.getOrCreateRoom(recipientId);
+    await _fetchRooms();
+    return data;
   }
 }
 
 // -------------------------------------------------------------------
 // Chat messages provider (family) — one instance per roomId
 // -------------------------------------------------------------------
-final chatMessagesProvider = NotifierProvider
-    .family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(
-        ChatMessagesNotifier.new);
+final chatMessagesProvider = AutoDisposeNotifierProviderFamily<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>((ref, roomId) => ChatMessagesNotifier(roomId: roomId));
 
-class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
+class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
+  final int roomId;
   late final ChatRepository _repository;
-  Timer? _pollingTimer;
+  Timer? _timer;
+
+  ChatMessagesNotifier({required this.roomId});
 
   @override
-  AsyncValue<List<ChatMessageModel>> build(int arg) {
-    _repository = ref.watch(chatRepositoryProvider);
-    fetchMessages(arg);
-    _pollingTimer =
-        Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages(arg));
-    ref.onDispose(() => _pollingTimer?.cancel());
+  AsyncValue<List<ChatMessageModel>> build(int roomId) {
+    // roomId parameter is same as this.roomId
+    _repository = ref.read(chatRepositoryProvider);
+    _fetchMessages(roomId);
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages(roomId));
+    ref.onDispose(() => _timer?.cancel());
     return const AsyncValue.loading();
   }
 
-  Future<void> fetchMessages(int roomId) async {
+  Future<void> _fetchMessages(int roomId) async {
     try {
       final msgs = await _repository.getMessages(roomId);
       state = AsyncValue.data(msgs);
@@ -115,10 +112,7 @@ class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageMod
     try {
       final msgs = await _repository.getMessages(roomId);
       final current = state.value ?? [];
-      if (msgs.length != current.length ||
-          (msgs.isNotEmpty &&
-              current.isNotEmpty &&
-              msgs.last.id != current.last.id)) {
+      if (msgs.length != current.length || (msgs.isNotEmpty && current.isNotEmpty && msgs.last.id != current.last.id)) {
         state = AsyncValue.data(msgs);
       }
     } catch (_) {}
@@ -127,7 +121,7 @@ class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageMod
   Future<bool> sendMessage(int recipientId, String content) async {
     if (content.trim().isEmpty) return false;
     try {
-      final sent = await _repository.sendMessage(arg, recipientId, content);
+      final sent = await _repository.sendMessage(roomId, recipientId, content);
       final current = state.value ?? [];
       state = AsyncValue.data([...current, sent]);
       return true;
