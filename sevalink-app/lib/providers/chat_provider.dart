@@ -11,20 +11,24 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   return ChatRepository(dioClient);
 });
 
+// -------------------------------------------------------------------
 // Unread messages count provider
-final unreadMessagesCountProvider = NotifierProvider.autoDispose<UnreadMessagesCountNotifier, int>((ref) => UnreadMessagesCountNotifier());
+// -------------------------------------------------------------------
+final unreadMessagesCountProvider =
+    StateNotifierProvider.autoDispose<UnreadMessagesCountNotifier, int>((ref) => UnreadMessagesCountNotifier(ref));
 
-class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
-  late ChatRepository _repository;
+class UnreadMessagesCountNotifier extends StateNotifier<int> {
+  final Ref ref;
+  late final ChatRepository _repository;
   Timer? _timer;
 
-  @override
-  int build() {
+  UnreadMessagesCountNotifier(this.ref) : super(0) {
     _repository = ref.watch(chatRepositoryProvider);
+    // initial fetch
     fetchCount();
+    // periodic refresh
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => fetchCount());
     ref.onDispose(() => _timer?.cancel());
-    return 0;
   }
 
   Future<void> fetchCount() async {
@@ -35,20 +39,24 @@ class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
   }
 }
 
+// -------------------------------------------------------------------
 // Chat rooms provider
-final chatRoomsProvider = NotifierProvider.autoDispose<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>((ref) => ChatRoomsNotifier());
+// -------------------------------------------------------------------
+final chatRoomsProvider =
+    StateNotifierProvider.autoDispose<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>((ref) => ChatRoomsNotifier(ref));
 
-class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomModel>>> {
-  late ChatRepository _repository;
+class ChatRoomsNotifier extends StateNotifier<AsyncValue<List<ChatRoomModel>>> {
+  final Ref ref;
+  late final ChatRepository _repository;
   Timer? _pollingTimer;
 
-  @override
-  AsyncValue<List<ChatRoomModel>> build() {
+  ChatRoomsNotifier(this.ref) : super(const AsyncValue.loading()) {
     _repository = ref.watch(chatRepositoryProvider);
+    // initial load
     fetchRooms();
-    _startPolling();
+    // start polling
+    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) => fetchRooms());
     ref.onDispose(() => _pollingTimer?.cancel());
-    return const AsyncValue.loading();
   }
 
   Future<void> fetchRooms() async {
@@ -62,10 +70,6 @@ class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomMode
     }
   }
 
-  void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) => fetchRooms());
-  }
-
   Future<Map<String, dynamic>> initializeRoom(int recipientId) async {
     final roomData = await _repository.getOrCreateRoom(recipientId);
     fetchRooms();
@@ -73,29 +77,32 @@ class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomMode
   }
 }
 
-// Chat messages provider (family)
-final chatMessagesProvider = NotifierProvider.autoDispose.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>((ref, roomId) => ChatMessagesNotifier(roomId));
+// -------------------------------------------------------------------
+// Chat messages provider (family) – one instance per roomId
+// -------------------------------------------------------------------
+final chatMessagesProvider =
+    StateNotifierProvider.autoDispose.family<ChatMessagesNotifier,
+        AsyncValue<List<ChatMessageModel>>, int>((ref, roomId) => ChatMessagesNotifier(ref, roomId));
 
-class ChatMessagesNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatMessageModel>>> {
+class ChatMessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessageModel>>> {
+  final Ref ref;
   final int _roomId;
-  late ChatRepository _repository;
+  late final ChatRepository _repository;
   Timer? _pollingTimer;
 
-  ChatMessagesNotifier(this._roomId);
-
-  @override
-  AsyncValue<List<ChatMessageModel>> build() {
+  ChatMessagesNotifier(this.ref, this._roomId) : super(const AsyncValue.loading()) {
     _repository = ref.watch(chatRepositoryProvider);
+    // initial load
     fetchMessages();
-    _startPolling();
+    // start polling
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages());
     ref.onDispose(() => _pollingTimer?.cancel());
-    return const AsyncValue.loading();
   }
 
   Future<void> fetchMessages() async {
     try {
-      final messages = await _repository.getMessages(_roomId);
-      state = AsyncValue.data(messages);
+      final msgs = await _repository.getMessages(_roomId);
+      state = AsyncValue.data(msgs);
     } catch (e, stack) {
       if (state is! AsyncData) {
         state = AsyncValue.error(e, stack);
@@ -103,16 +110,13 @@ class ChatMessagesNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatMessa
     }
   }
 
-  void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages());
-  }
-
   Future<void> _pollMessages() async {
     try {
-      final messages = await _repository.getMessages(_roomId);
+      final msgs = await _repository.getMessages(_roomId);
       final current = state.value ?? [];
-      if (messages.length != current.length || (messages.isNotEmpty && current.isNotEmpty && messages.last.id != current.last.id)) {
-        state = AsyncValue.data(messages);
+      if (msgs.length != current.length ||
+          (msgs.isNotEmpty && current.isNotEmpty && msgs.last.id != current.last.id)) {
+        state = AsyncValue.data(msgs);
       }
     } catch (_) {}
   }
