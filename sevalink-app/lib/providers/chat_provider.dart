@@ -1,3 +1,4 @@
+// Provider and Notifier implementations for chat feature
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_provider.dart';
@@ -73,16 +74,17 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
 }
 
 // Provider for active conversation messages (polled every 3 seconds) using NotifierProvider.family
-final chatMessagesProvider = NotifierProvider.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(ChatMessagesNotifier.new);
+final chatMessagesProvider = NotifierProvider.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>((ref, roomId) => ChatMessagesNotifier(roomId));
 
 class ChatMessagesNotifier extends Notifier<AsyncValue<List<ChatMessageModel>>> {
-  late int _roomId;
+  final int _roomId;
   late ChatRepository _repository;
   Timer? _pollingTimer;
 
+  ChatMessagesNotifier(this._roomId);
+
   @override
-  AsyncValue<List<ChatMessageModel>> build(int roomId) {
-    _roomId = roomId;
+  AsyncValue<List<ChatMessageModel>> build() {
     _repository = ref.watch(chatRepositoryProvider);
     fetchMessages();
     _startPolling();
