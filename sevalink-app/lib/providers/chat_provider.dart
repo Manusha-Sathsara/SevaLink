@@ -4,6 +4,7 @@ import 'auth_provider.dart';
 import '../data/models/chat_models.dart';
 import '../data/repositories/chat_repository.dart';
 
+// Repository provider
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   final dioClient = ref.watch(dioClientProvider);
   return ChatRepository(dioClient);
@@ -20,14 +21,8 @@ class UnreadMessagesCountNotifier extends Notifier<int> {
   int build() {
     _repository = ref.watch(chatRepositoryProvider);
     fetchCount();
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      fetchCount();
-    });
-
-    ref.onDispose(() {
-      _timer?.cancel();
-    });
-
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => fetchCount());
+    ref.onDispose(() => _timer?.cancel());
     return 0;
   }
 
@@ -51,11 +46,7 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
     _repository = ref.watch(chatRepositoryProvider);
     fetchRooms();
     _startPolling();
-
-    ref.onDispose(() {
-      _pollingTimer?.cancel();
-    });
-
+    ref.onDispose(() => _pollingTimer?.cancel());
     return const AsyncValue.loading();
   }
 
@@ -71,16 +62,7 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
   }
 
   void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (timer) {
-      _pollRooms();
-    });
-  }
-
-  Future<void> _pollRooms() async {
-    try {
-      final rooms = await _repository.getChatRooms();
-      state = AsyncValue.data(rooms);
-    } catch (_) {}
+    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) => fetchRooms());
   }
 
   Future<Map<String, dynamic>> initializeRoom(int recipientId) async {
@@ -90,25 +72,24 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
   }
 }
 
-// Provider for active conversation messages (polled every 3 seconds) using FamilyNotifier
-final chatMessagesProvider = NotifierProvider.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(ChatMessagesNotifier.new);
+// Provider for active conversation messages (polled every 3 seconds) using NotifierProvider.family
+final chatMessagesProvider = NotifierProvider.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(
+  (ref, roomId) => ChatMessagesNotifier(roomId),
+);
 
-class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
+class ChatMessagesNotifier extends Notifier<AsyncValue<List<ChatMessageModel>>> {
+  final int _roomId;
   late ChatRepository _repository;
-  late int _roomId;
   Timer? _pollingTimer;
 
+  ChatMessagesNotifier(this._roomId);
+
   @override
-  AsyncValue<List<ChatMessageModel>> build(int arg) {
-    _roomId = arg;
+  AsyncValue<List<ChatMessageModel>> build() {
     _repository = ref.watch(chatRepositoryProvider);
     fetchMessages();
     _startPolling();
-
-    ref.onDispose(() {
-      _pollingTimer?.cancel();
-    });
-
+    ref.onDispose(() => _pollingTimer?.cancel());
     return const AsyncValue.loading();
   }
 
@@ -124,17 +105,15 @@ class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageMod
   }
 
   void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      _pollMessages();
-    });
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages());
   }
 
   Future<void> _pollMessages() async {
     try {
       final messages = await _repository.getMessages(_roomId);
-      final currentMessages = state.value ?? [];
-      if (messages.length != currentMessages.length ||
-          (messages.isNotEmpty && currentMessages.isNotEmpty && messages.last.id != currentMessages.last.id)) {
+      final current = state.value ?? [];
+      if (messages.length != current.length ||
+          (messages.isNotEmpty && current.isNotEmpty && messages.last.id != current.last.id)) {
         state = AsyncValue.data(messages);
       }
     } catch (_) {}
@@ -143,9 +122,9 @@ class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageMod
   Future<bool> sendMessage(int recipientId, String content) async {
     if (content.trim().isEmpty) return false;
     try {
-      final sentMsg = await _repository.sendMessage(_roomId, recipientId, content);
-      final currentMessages = state.value ?? [];
-      state = AsyncValue.data([...currentMessages, sentMsg]);
+      final sent = await _repository.sendMessage(_roomId, recipientId, content);
+      final current = state.value ?? [];
+      state = AsyncValue.data([...current, sent]);
       return true;
     } catch (_) {
       return false;
