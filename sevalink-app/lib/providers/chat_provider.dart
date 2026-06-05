@@ -82,7 +82,7 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
 // -------------------------------------------------------------------
 // Chat messages provider (family) – one instance per roomId
 // -------------------------------------------------------------------
-final chatMessagesProvider = NotifierProvider.autoDispose.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(ChatMessagesNotifier.new);
+final chatMessagesProvider = NotifierProvider.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(ChatMessagesNotifier.new);
 
 class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
   late final ChatRepository _repository;
@@ -120,10 +120,10 @@ class ChatMessagesNotifier extends FamilyNotifier<AsyncValue<List<ChatMessageMod
     } catch (_) {}
   }
 
-  Future<bool> sendMessage(int roomId, int recipientId, String content) async {
+  Future<bool> sendMessage(int recipientId, String content) async {
     if (content.trim().isEmpty) return false;
     try {
-      final sent = await _repository.sendMessage(roomId, recipientId, content);
+      final sent = await _repository.sendMessage(arg, recipientId, content);
       final current = state.value ?? [];
       state = AsyncValue.data([...current, sent]);
       return true;
