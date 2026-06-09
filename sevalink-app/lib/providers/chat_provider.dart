@@ -86,8 +86,6 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<Cha
   late final ChatRepository _repository;
   Timer? _timer;
   late final int _roomId;
-  late final ChatRepository _repository;
-  Timer? _timer;
 
   @override
   AsyncValue<List<ChatMessageModel>> build(int roomId) {
