@@ -1,7 +1,8 @@
 // Provider and Notifier implementations for chat feature
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart' hide State;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:riverpod/riverpod.dart';
 import '../data/models/chat_models.dart';
 import '../data/repositories/chat_repository.dart';
 import 'auth_provider.dart'; // provides dioClientProvider
@@ -24,7 +25,6 @@ class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
   @override
   int build() {
     _repository = ref.read(chatRepositoryProvider);
-    // Start with zero count, will be updated shortly
     _updateCount();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) => _updateCount());
     ref.onDispose(() => _timer?.cancel());
@@ -54,7 +54,6 @@ class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomMode
     _fetchRooms();
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchRooms());
     ref.onDispose(() => _timer?.cancel());
-    // Initial loading state
     return const AsyncValue.loading();
   }
 
@@ -87,20 +86,20 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<Cha
   Timer? _timer;
   late final int _roomId;
 
+  ChatMessagesNotifier(this._roomId);
+
   @override
   AsyncValue<List<ChatMessageModel>> build(int roomId) {
-    _roomId = roomId;
     _repository = ref.read(chatRepositoryProvider);
-    _fetchMessages(roomId);
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages(roomId));
+    _fetchMessages();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages());
     ref.onDispose(() => _timer?.cancel());
-    // Initial loading state
     return const AsyncValue.loading();
   }
 
-  Future<void> _fetchMessages(int roomId) async {
+  Future<void> _fetchMessages() async {
     try {
-      final msgs = await _repository.getMessages(roomId);
+      final msgs = await _repository.getMessages(_roomId);
       state = AsyncValue.data(msgs);
     } catch (e, stack) {
       if (state is! AsyncData) {
@@ -109,9 +108,9 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<Cha
     }
   }
 
-  Future<void> _pollMessages(int roomId) async {
+  Future<void> _pollMessages() async {
     try {
-      final msgs = await _repository.getMessages(roomId);
+      final msgs = await _repository.getMessages(_roomId);
       final current = state.value ?? [];
       if (msgs.length != current.length || (msgs.isNotEmpty && current.isNotEmpty && msgs.last.id != current.last.id)) {
         state = AsyncValue.data(msgs);
