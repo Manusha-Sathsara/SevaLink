@@ -85,9 +85,13 @@ final chatMessagesProvider = NotifierProvider.autoDispose.family<ChatMessagesNot
 class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
   late final ChatRepository _repository;
   Timer? _timer;
+  late final int _roomId;
+  late final ChatRepository _repository;
+  Timer? _timer;
 
   @override
   AsyncValue<List<ChatMessageModel>> build(int roomId) {
+    _roomId = roomId;
     _repository = ref.read(chatRepositoryProvider);
     _fetchMessages(roomId);
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages(roomId));
@@ -120,7 +124,7 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<Cha
   Future<bool> sendMessage(int recipientId, String content) async {
     if (content.trim().isEmpty) return false;
     try {
-      final sent = await _repository.sendMessage(roomId, recipientId, content);
+      final sent = await _repository.sendMessage(_roomId, recipientId, content);
       final current = state.value ?? [];
       state = AsyncValue.data([...current, sent]);
       return true;
