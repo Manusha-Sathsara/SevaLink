@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:riverpod/riverpod.dart';
 import '../data/models/chat_models.dart';
 import '../data/repositories/chat_repository.dart';
 import 'auth_provider.dart'; // provides dioClientProvider
