@@ -6,7 +6,9 @@ import '../data/models/chat_models.dart';
 import '../data/repositories/chat_repository.dart';
 import 'auth_provider.dart'; // provides dioClientProvider
 
+// -------------------------------------------------------------------
 // Repository provider
+// -------------------------------------------------------------------
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   final dioClient = ref.watch(dioClientProvider);
   return ChatRepository(dioClient);
@@ -15,7 +17,9 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 // -------------------------------------------------------------------
 // Unread messages count provider
 // -------------------------------------------------------------------
-final unreadMessagesCountProvider = NotifierProvider.autoDispose<UnreadMessagesCountNotifier, int>((ref) => UnreadMessagesCountNotifier());
+final unreadMessagesCountProvider = NotifierProvider.autoDispose<UnreadMessagesCountNotifier, int>(
+  (ref) => UnreadMessagesCountNotifier(),
+);
 
 class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
   late final ChatRepository _repository;
@@ -41,7 +45,9 @@ class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
 // -------------------------------------------------------------------
 // Chat rooms provider
 // -------------------------------------------------------------------
-final chatRoomsProvider = NotifierProvider.autoDispose<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>((ref) => ChatRoomsNotifier());
+final chatRoomsProvider = NotifierProvider.autoDispose<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>(
+  (ref) => ChatRoomsNotifier(),
+);
 
 class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomModel>>> {
   late final ChatRepository _repository;
@@ -78,17 +84,19 @@ class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomMode
 // -------------------------------------------------------------------
 // Chat messages provider (family) — one instance per roomId
 // -------------------------------------------------------------------
-final chatMessagesProvider = NotifierProvider.autoDispose.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>((ref, roomId) => ChatMessagesNotifier(roomId));
+final chatMessagesProvider = NotifierProvider.autoDispose.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(
+  (ref, roomId) => ChatMessagesNotifier(roomId),
+);
 
-class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
+class ChatMessagesNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatMessageModel>>> {
+  final int _roomId;
   late final ChatRepository _repository;
   Timer? _timer;
-  late final int _roomId;
 
   ChatMessagesNotifier(this._roomId);
 
   @override
-  AsyncValue<List<ChatMessageModel>> build(int roomId) {
+  AsyncValue<List<ChatMessageModel>> build() {
     _repository = ref.read(chatRepositoryProvider);
     _fetchMessages();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages());
@@ -111,7 +119,8 @@ class ChatMessagesNotifier extends AutoDisposeFamilyNotifier<AsyncValue<List<Cha
     try {
       final msgs = await _repository.getMessages(_roomId);
       final current = state.value ?? [];
-      if (msgs.length != current.length || (msgs.isNotEmpty && current.isNotEmpty && msgs.last.id != current.last.id)) {
+      if (msgs.length != current.length ||
+          (msgs.isNotEmpty && current.isNotEmpty && msgs.last.id != current.last.id)) {
         state = AsyncValue.data(msgs);
       }
     } catch (_) {}
