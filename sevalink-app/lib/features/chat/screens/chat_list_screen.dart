@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../providers/chat_provider.dart';
-import '../../../data/models/chat_models.dart';
 
 class ChatListScreen extends ConsumerStatefulWidget {
   final bool showBackButton;

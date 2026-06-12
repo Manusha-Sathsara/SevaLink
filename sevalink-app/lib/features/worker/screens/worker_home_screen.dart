@@ -763,34 +763,6 @@ class _BottomNav extends StatelessWidget {
   }
 }
 
-//  Chat Placeholder
-class _ChatPage extends StatelessWidget {
-  const _ChatPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.chat_bubble_outline_rounded,
-              size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          const Text('Chat',
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E))),
-          const SizedBox(height: 8),
-          Text('Coming soon',
-              style:
-              TextStyle(fontSize: 14, color: Colors.grey.shade500)),
-        ],
-      ),
-    );
-  }
-}
-
 //  Notifications Drawer
 class _NotificationsDrawer extends StatelessWidget {
   const _NotificationsDrawer();
