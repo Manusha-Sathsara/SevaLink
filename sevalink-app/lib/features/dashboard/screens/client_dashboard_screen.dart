@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 // Assuming this is the correct path based on the original codebase structure
 import '../../../providers/auth_provider.dart';
 import '../../../providers/client_dashboard_provider.dart';
+import '../../../providers/chat_provider.dart';
 
 // ============================================================================
 // DOMAIN MODELS (Mock Data Structures)
@@ -571,8 +572,31 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 separatorBuilder: (context, index) => const SizedBox(height: 16),
                 itemBuilder: (context, index) {
                   final worker = workers[index];
-                  return Container(
-                    padding: const EdgeInsets.all(16),
+                  return InkWell(
+                    onTap: () async {
+                      if (worker.id == null) return;
+                      final router = GoRouter.of(context);
+                      try {
+                        final roomData = await ref
+                            .read(chatRoomsProvider.notifier)
+                            .initializeRoom(worker.id!);
+                        router.push('/chat/room', extra: {
+                          'chatRoomId': roomData['id'],
+                          'recipientId': worker.id,
+                          'recipientName': worker.name,
+                          'recipientRole': 'WORKER',
+                        });
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to start chat: $e')),
+                          );
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(24),
@@ -735,8 +759,9 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                         ),
                       ],
                     ),
-                  );
-                },
+                  ),
+                );
+              },
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),

@@ -513,6 +513,8 @@ class _JobCard extends StatelessWidget {
         0,
     isNew: job.isNew,
     category: 'General',
+    clientId: 1, // Mock client ID for chat routing
+    clientName: 'Dilini Rajapaksa', // Mock client name
   );
 
   @override

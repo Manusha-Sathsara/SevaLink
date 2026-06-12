@@ -18,10 +18,10 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 // Unread messages count provider
 // -------------------------------------------------------------------
 final unreadMessagesCountProvider = NotifierProvider.autoDispose<UnreadMessagesCountNotifier, int>(
-  (ref) => UnreadMessagesCountNotifier(),
+  UnreadMessagesCountNotifier.new,
 );
 
-class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
+class UnreadMessagesCountNotifier extends Notifier<int> {
   late final ChatRepository _repository;
   Timer? _timer;
 
@@ -46,10 +46,10 @@ class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
 // Chat rooms provider
 // -------------------------------------------------------------------
 final chatRoomsProvider = NotifierProvider.autoDispose<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>(
-  (ref) => ChatRoomsNotifier(),
+  ChatRoomsNotifier.new,
 );
 
-class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomModel>>> {
+class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
   late final ChatRepository _repository;
   Timer? _timer;
 
@@ -85,10 +85,10 @@ class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomMode
 // Chat messages provider (family) — one instance per roomId
 // -------------------------------------------------------------------
 final chatMessagesProvider = NotifierProvider.autoDispose.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(
-  (ref, roomId) => ChatMessagesNotifier(roomId),
+  ChatMessagesNotifier.new,
 );
 
-class ChatMessagesNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatMessageModel>>> {
+class ChatMessagesNotifier extends Notifier<AsyncValue<List<ChatMessageModel>>> {
   final int _roomId;
   late final ChatRepository _repository;
   Timer? _timer;

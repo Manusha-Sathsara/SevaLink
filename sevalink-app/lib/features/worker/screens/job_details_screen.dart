@@ -1,15 +1,17 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../data/models/job.dart';
+import '../../../providers/chat_provider.dart';
 
-class JobDetailsScreen extends StatelessWidget {
+class JobDetailsScreen extends ConsumerWidget {
   final Job job;
 
   const JobDetailsScreen({super.key, required this.job});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6FB),
       body: CustomScrollView(
@@ -96,7 +98,7 @@ class JobDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildClientCard(context),
+                  _buildClientCard(context, ref),
                 ],
               ),
             ),
@@ -361,7 +363,7 @@ class JobDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildClientCard(BuildContext context) {
+  Widget _buildClientCard(BuildContext context, WidgetRef ref) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -411,19 +413,19 @@ class JobDetailsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Client',
-                      style: TextStyle(
+                      job.clientName ?? 'Client',
+                      style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1F2937)),
                     ),
-                    SizedBox(height: 3),
-                    Row(
+                    const SizedBox(height: 3),
+                    const Row(
                       children: [
                         Icon(Icons.verified_outlined,
                             size: 14, color: Color(0xFF006B5E)),
@@ -436,21 +438,45 @@ class JobDetailsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF8),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: const Color(0xFF006B5E), width: 1),
-                ),
-                child: const Text(
-                  'Message',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF006B5E),
-                      fontWeight: FontWeight.w600),
+              GestureDetector(
+                onTap: () async {
+                  final clientId = job.clientId ?? 1;
+                  final clientName = job.clientName ?? 'Client';
+                  final router = GoRouter.of(context);
+                  try {
+                    final roomData = await ref
+                        .read(chatRoomsProvider.notifier)
+                        .initializeRoom(clientId);
+                    router.push('/chat/room', extra: {
+                      'chatRoomId': roomData['id'],
+                      'recipientId': clientId,
+                      'recipientName': clientName,
+                      'recipientRole': 'CLIENT',
+                    });
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to start chat: $e')),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF8),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: const Color(0xFF006B5E), width: 1),
+                  ),
+                  child: const Text(
+                    'Message',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF006B5E),
+                        fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
