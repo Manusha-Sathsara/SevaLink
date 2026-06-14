@@ -1,10 +1,13 @@
 // Provider and Notifier implementations for chat feature
+// Integrates WebSocket real-time delivery + REST polling fallback
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models/chat_models.dart';
 import '../data/repositories/chat_repository.dart';
-import 'auth_provider.dart'; // provides dioClientProvider
+import '../services/websocket_service.dart';
+import 'auth_provider.dart';       // provides dioClientProvider, secureStorageProvider
+import 'websocket_provider.dart';  // provides webSocketServiceProvider
 
 // -------------------------------------------------------------------
 // Repository provider
@@ -17,11 +20,12 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 // -------------------------------------------------------------------
 // Unread messages count provider
 // -------------------------------------------------------------------
-final unreadMessagesCountProvider = NotifierProvider.autoDispose<UnreadMessagesCountNotifier, int>(
+final unreadMessagesCountProvider =
+    NotifierProvider.autoDispose<UnreadMessagesCountNotifier, int>(
   UnreadMessagesCountNotifier.new,
 );
 
-class UnreadMessagesCountNotifier extends Notifier<int> {
+class UnreadMessagesCountNotifier extends AutoDisposeNotifier<int> {
   late final ChatRepository _repository;
   Timer? _timer;
 
@@ -29,7 +33,8 @@ class UnreadMessagesCountNotifier extends Notifier<int> {
   int build() {
     _repository = ref.read(chatRepositoryProvider);
     _updateCount();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) => _updateCount());
+    // Poll every 10s for badge updates (lightweight call)
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => _updateCount());
     ref.onDispose(() => _timer?.cancel());
     return 0;
   }
@@ -45,11 +50,12 @@ class UnreadMessagesCountNotifier extends Notifier<int> {
 // -------------------------------------------------------------------
 // Chat rooms provider
 // -------------------------------------------------------------------
-final chatRoomsProvider = NotifierProvider.autoDispose<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>(
+final chatRoomsProvider =
+    NotifierProvider.autoDispose<ChatRoomsNotifier, AsyncValue<List<ChatRoomModel>>>(
   ChatRoomsNotifier.new,
 );
 
-class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
+class ChatRoomsNotifier extends AutoDisposeNotifier<AsyncValue<List<ChatRoomModel>>> {
   late final ChatRepository _repository;
   Timer? _timer;
 
@@ -57,6 +63,7 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
   AsyncValue<List<ChatRoomModel>> build() {
     _repository = ref.read(chatRepositoryProvider);
     _fetchRooms();
+    // Poll rooms list every 10s to catch room creation from other devices
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchRooms());
     ref.onDispose(() => _timer?.cancel());
     return const AsyncValue.loading();
@@ -71,7 +78,7 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
     }
   }
 
-  // Exposed method for UI to manually refresh
+  // Exposed for UI to manually refresh
   Future<void> fetchRooms() => _fetchRooms();
 
   Future<Map<String, dynamic>> initializeRoom(int recipientId) async {
@@ -84,29 +91,50 @@ class ChatRoomsNotifier extends Notifier<AsyncValue<List<ChatRoomModel>>> {
 // -------------------------------------------------------------------
 // Chat messages provider (family) — one instance per roomId
 // -------------------------------------------------------------------
-final chatMessagesProvider = NotifierProvider.autoDispose.family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(
+final chatMessagesProvider = NotifierProvider.autoDispose
+    .family<ChatMessagesNotifier, AsyncValue<List<ChatMessageModel>>, int>(
   ChatMessagesNotifier.new,
 );
 
-class ChatMessagesNotifier extends Notifier<AsyncValue<List<ChatMessageModel>>> {
-  final int _roomId;
+class ChatMessagesNotifier
+    extends AutoDisposeFamilyNotifier<AsyncValue<List<ChatMessageModel>>, int> {
   late final ChatRepository _repository;
-  Timer? _timer;
-
-  ChatMessagesNotifier(this._roomId);
+  late final WebSocketService _ws;
+  Timer? _pollTimer;
 
   @override
-  AsyncValue<List<ChatMessageModel>> build() {
+  AsyncValue<List<ChatMessageModel>> build(int arg) {
     _repository = ref.read(chatRepositoryProvider);
+    _ws = ref.read(webSocketServiceProvider);
+
+    // 1. Fetch initial messages via REST
     _fetchMessages();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _pollMessages());
-    ref.onDispose(() => _timer?.cancel());
+
+    // 2. Subscribe to real-time WebSocket topic for this room
+    _ws.subscribeToRoom(arg, _onWsMessage);
+
+    // 3. Keep a slow polling fallback (15s) for when WS is disconnected
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _pollMessages());
+
+    ref.onDispose(() {
+      _pollTimer?.cancel();
+      _ws.unsubscribeFromRoom(arg);
+    });
+
     return const AsyncValue.loading();
+  }
+
+  // Called by WebSocket subscription on every new message
+  void _onWsMessage(ChatMessageModel msg) {
+    final current = state.value ?? [];
+    // Avoid duplicates (WS may fire and REST poll returns same message)
+    if (current.any((m) => m.id == msg.id)) return;
+    state = AsyncValue.data([...current, msg]);
   }
 
   Future<void> _fetchMessages() async {
     try {
-      final msgs = await _repository.getMessages(_roomId);
+      final msgs = await _repository.getMessages(arg);
       state = AsyncValue.data(msgs);
     } catch (e, stack) {
       if (state is! AsyncData) {
@@ -115,23 +143,38 @@ class ChatMessagesNotifier extends Notifier<AsyncValue<List<ChatMessageModel>>> 
     }
   }
 
+  // Lightweight poll: only update state if there are new messages
   Future<void> _pollMessages() async {
     try {
-      final msgs = await _repository.getMessages(_roomId);
+      final msgs = await _repository.getMessages(arg);
       final current = state.value ?? [];
       if (msgs.length != current.length ||
-          (msgs.isNotEmpty && current.isNotEmpty && msgs.last.id != current.last.id)) {
+          (msgs.isNotEmpty &&
+              current.isNotEmpty &&
+              msgs.last.id != current.last.id)) {
         state = AsyncValue.data(msgs);
       }
     } catch (_) {}
   }
 
+  /// Send a message — tries WebSocket first, falls back to REST.
   Future<bool> sendMessage(int recipientId, String content) async {
     if (content.trim().isEmpty) return false;
     try {
-      final sent = await _repository.sendMessage(_roomId, recipientId, content);
-      final current = state.value ?? [];
-      state = AsyncValue.data([...current, sent]);
+      // Attempt WebSocket send first (no extra network round-trip)
+      final wsSent = _ws.sendMessage(
+        chatRoomId: arg,
+        recipientId: recipientId,
+        content: content,
+      );
+
+      if (!wsSent) {
+        // WebSocket not connected — use REST, then append to local state
+        final sent = await _repository.sendMessage(arg, recipientId, content);
+        final current = state.value ?? [];
+        state = AsyncValue.data([...current, sent]);
+      }
+      // If WS was sent, the server will broadcast it back and _onWsMessage adds it
       return true;
     } catch (_) {
       return false;

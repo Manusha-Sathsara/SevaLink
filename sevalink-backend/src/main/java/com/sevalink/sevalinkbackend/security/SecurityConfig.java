@@ -44,14 +44,11 @@ public class SecurityConfig {
                         // Public endpoints (no authentication needed)
                         .requestMatchers(
                                     "/api/auth/**"
-//                                "/api/auth/register",
-//                                "/api/auth/login",
-//                                "/api/auth/forgot-password",
-//                                "/api/auth/reset-password",
-//                                "/api/auth/refresh",
-//                                "/api/auth/me"
                                 ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+
+                        // WebSocket SockJS handshake — auth happens at STOMP CONNECT level
+                        .requestMatchers("/ws-chat/**").permitAll()
 
                         // Role-based protected endpoints
                         .requestMatchers("/api/client/**").hasRole("CLIENT")

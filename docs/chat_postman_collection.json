@@ -1,0 +1,179 @@
+{
+  "info": {
+    "name": "SevaLink Chat API",
+    "_postman_id": "sevalink-chat-collection-v1",
+    "description": "Complete Postman collection for the SevaLink real-time chat feature.\nIncludes: Auth, Chat Rooms, Messages, Unread Count, and WebSocket test notes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "BASE_URL",  "value": "http://localhost:8080",  "type": "string" },
+    { "key": "WS_URL",    "value": "ws://localhost:8080/ws-chat/websocket", "type": "string" },
+    { "key": "TOKEN",     "value": "",                        "type": "string" },
+    { "key": "ROOM_ID",   "value": "",                        "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login (get JWT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "    pm.collectionVariables.set('TOKEN', json.data.accessToken);",
+                  "    console.log('Token saved:', json.data.accessToken.substring(0, 30) + '...');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"client@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/login",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Chat Rooms",
+      "item": [
+        {
+          "name": "Get or Create Chat Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('ROOM_ID', json.data.id);",
+                  "    console.log('Room ID saved:', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": 2\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/chat/room",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "chat", "room"]
+            },
+            "description": "Creates a new chat room between the authenticated user and recipientId.\nReturns the existing room if one already exists."
+          }
+        },
+        {
+          "name": "Get All Chat Rooms for Current User",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{TOKEN}}" }],
+            "url": {
+              "raw": "{{BASE_URL}}/api/chat/rooms",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "chat", "rooms"]
+            },
+            "description": "Returns all chat rooms for the authenticated user, sorted by last message time.\nEach room includes: otherUserFullName, otherUserRole, lastMessage, lastMessageAt, unreadCount."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Messages",
+      "item": [
+        {
+          "name": "Get Messages in Room",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{TOKEN}}" }],
+            "url": {
+              "raw": "{{BASE_URL}}/api/chat/room/{{ROOM_ID}}/messages",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "chat", "room", "{{ROOM_ID}}", "messages"]
+            },
+            "description": "Returns all messages in the room sorted by timestamp ASC.\nAutomatically marks unread messages (where recipientId = current user) as read."
+          }
+        },
+        {
+          "name": "Send Message (REST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{TOKEN}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chatRoomId\": {{ROOM_ID}},\n  \"recipientId\": 2,\n  \"content\": \"Hello! I am available for the electrical work.\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/chat/message",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "chat", "message"]
+            },
+            "description": "Sends a message via REST. The backend also broadcasts this to WebSocket topic /topic/messages/{roomId}.\nSo any client subscribed over WebSocket will receive this message in real time."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Unread Count",
+      "item": [
+        {
+          "name": "Get Global Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{TOKEN}}" }],
+            "url": {
+              "raw": "{{BASE_URL}}/api/chat/unread-count",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "chat", "unread-count"]
+            },
+            "description": "Returns total number of unread messages across ALL rooms for the current user.\nUsed for notification badge on the bottom navigation bar."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. WebSocket (Notes)",
+      "item": [
+        {
+          "name": "WebSocket Connection Info (README)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/ws-chat/info",
+              "host": ["{{BASE_URL}}"],
+              "path": ["ws-chat", "info"]
+            },
+            "description": "## WebSocket STOMP Connection\n\nUse Postman's WebSocket tab or wscat to test.\n\n### Connection URL\nws://localhost:8080/ws-chat/websocket\n\n### STOMP CONNECT frame\n```\nCONNECT\nAccept-Version:1.2\nAuthorization:Bearer <your_jwt_token>\n\n^@\n```\n\n### Subscribe to room messages\n```\nSUBSCRIBE\nid:sub-1\ndestination:/topic/messages/1\n\n^@\n```\n\n### Send a message via WebSocket\n```\nSEND\ndestination:/app/chat.send\ncontent-type:application/json\n\n{\"chatRoomId\":1,\"recipientId\":2,\"content\":\"Hello via WebSocket!\",\"messageType\":\"TEXT\"}\n^@\n```\n\n### Expected broadcast to /topic/messages/1\n```json\n{\n  \"id\": 15,\n  \"chatRoomId\": 1,\n  \"senderId\": 1,\n  \"senderName\": \"Rajesh Kumar\",\n  \"recipientId\": 2,\n  \"recipientName\": \"Sunil Perera\",\n  \"content\": \"Hello via WebSocket!\",\n  \"messageType\": \"TEXT\",\n  \"isRead\": false,\n  \"timestamp\": \"2026-06-14T08:30:00\"\n}\n```"
+          }
+        }
+      ]
+    }
+  ]
+}

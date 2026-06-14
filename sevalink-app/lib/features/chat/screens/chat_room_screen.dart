@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../providers/chat_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/websocket_provider.dart';
+import '../../../services/websocket_service.dart';
 import '../../../data/models/chat_models.dart';
 
 class ChatRoomScreen extends ConsumerStatefulWidget {
@@ -123,16 +125,16 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     if (text.isEmpty || _activeRoomId == null) return;
 
     _messageController.clear();
-    
+
     // Deduce actual recipient ID
     int finalRecipientId = widget.recipientId ?? 0;
     if (finalRecipientId == 0 && _activeRoomId != null) {
-      // Find room in rooms list to get recipient ID
       final roomsState = ref.read(chatRoomsProvider);
-      final room = roomsState.value?.firstWhere((r) => r.id == _activeRoomId);
-      if (room != null) {
-        finalRecipientId = room.otherUserId;
-      }
+      final room = roomsState.value?.firstWhere(
+        (r) => r.id == _activeRoomId,
+        orElse: () => throw Exception(),
+      );
+      if (room != null) finalRecipientId = room.otherUserId;
     }
 
     final success = await ref
@@ -141,8 +143,36 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
 
     if (success) {
       _scrollToBottomDelayed();
-      ref.read(chatRoomsProvider.notifier).fetchRooms(); // Refresh the list snippet
+      ref.read(chatRoomsProvider.notifier).fetchRooms();
     }
+  }
+
+  // ── Connection Status Badge ──────────────────────────────────────────────
+  Widget _buildConnectionBadge(WsConnectionState state) {
+    final isLive = state == WsConnectionState.connected;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: isLive ? const Color(0xFF22C55E) : Colors.grey.shade400,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          isLive ? 'Live' : widget.recipientRole,
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -150,6 +180,9 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
     final authState = ref.watch(authProvider);
     final currentUserId = authState.user?.id ?? 0;
     final roleColor = _getRoleColor(widget.recipientRole);
+
+    // Watch WebSocket connection state
+    final wsState = ref.watch(wsConnectionStateProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F4F7),
@@ -199,26 +232,10 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF22C55E),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        widget.recipientRole,
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  wsState.when(
+                    data: (s) => _buildConnectionBadge(s),
+                    loading: () => _buildConnectionBadge(WsConnectionState.connecting),
+                    error: (_, __) => _buildConnectionBadge(WsConnectionState.disconnected),
                   ),
                 ],
               ),
@@ -274,8 +291,9 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                               grouped.putIfAbsent(header, () => []).add(msg);
                             }
 
-                            // Trigger scroll to bottom on new messages
-                            ref.listen<AsyncValue<List<ChatMessageModel>>>(chatMessagesProvider(_activeRoomId!), (prev, next) {
+                            // Scroll to bottom on new messages
+                            ref.listen<AsyncValue<List<ChatMessageModel>>>(
+                                chatMessagesProvider(_activeRoomId!), (prev, next) {
                               if (prev?.value?.length != next.value?.length) {
                                 _scrollToBottomDelayed();
                               }
@@ -283,23 +301,29 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
 
                             return ListView.builder(
                               controller: _scrollController,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 16),
                               itemCount: grouped.keys.length,
                               itemBuilder: (context, groupIndex) {
-                                final dateHeader = grouped.keys.elementAt(groupIndex);
+                                final dateHeader =
+                                    grouped.keys.elementAt(groupIndex);
                                 final groupMessages = grouped[dateHeader]!;
 
                                 return Column(
                                   children: [
                                     // Date Header
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 16),
                                       child: Center(
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 6),
                                           decoration: BoxDecoration(
-                                            color: Colors.grey.shade300.withOpacity(0.6),
-                                            borderRadius: BorderRadius.circular(10),
+                                            color: Colors.grey.shade300
+                                                .withOpacity(0.6),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                           ),
                                           child: Text(
                                             dateHeader,
@@ -313,32 +337,39 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                                       ),
                                     ),
 
-                                    // Messages under date
+                                    // Messages under date group
                                     ...groupMessages.map((msg) {
-                                      final isMe = msg.senderId == currentUserId;
+                                      final isMe =
+                                          msg.senderId == currentUserId;
                                       return Padding(
-                                        padding: const EdgeInsets.only(bottom: 12),
+                                        padding:
+                                            const EdgeInsets.only(bottom: 12),
                                         child: Row(
-                                          mainAxisAlignment:
-                                              isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                                          crossAxisAlignment: CrossAxisAlignment.end,
+                                          mainAxisAlignment: isMe
+                                              ? MainAxisAlignment.end
+                                              : MainAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
                                           children: [
                                             if (!isMe) ...[
-                                              // Recipient Profile Bubble
+                                              // Recipient avatar
                                               Container(
                                                 width: 32,
                                                 height: 32,
                                                 decoration: BoxDecoration(
-                                                  color: roleColor.withOpacity(0.15),
+                                                  color: roleColor
+                                                      .withOpacity(0.15),
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Center(
                                                   child: Text(
-                                                    _getInitials(widget.recipientName),
+                                                    _getInitials(
+                                                        widget.recipientName),
                                                     style: TextStyle(
                                                       color: roleColor,
                                                       fontSize: 11,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
                                                   ),
                                                 ),
@@ -349,57 +380,86 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                                             // Message Bubble
                                             Flexible(
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                    horizontal: 16, vertical: 12),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 12),
                                                 decoration: BoxDecoration(
                                                   color: isMe
-                                                      ? const Color(0xFFE65100) // Brand Orange
+                                                      ? const Color(0xFFE65100)
                                                       : Colors.white,
-                                                  borderRadius: BorderRadius.only(
-                                                    topLeft: const Radius.circular(16),
-                                                    topRight: const Radius.circular(16),
-                                                    bottomLeft: Radius.circular(isMe ? 16 : 4),
-                                                    bottomRight: Radius.circular(isMe ? 4 : 16),
+                                                  borderRadius: BorderRadius
+                                                      .only(
+                                                    topLeft:
+                                                        const Radius.circular(
+                                                            16),
+                                                    topRight:
+                                                        const Radius.circular(
+                                                            16),
+                                                    bottomLeft: Radius.circular(
+                                                        isMe ? 16 : 4),
+                                                    bottomRight: Radius.circular(
+                                                        isMe ? 4 : 16),
                                                   ),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: Colors.black.withOpacity(0.03),
+                                                      color: Colors.black
+                                                          .withOpacity(0.03),
                                                       blurRadius: 4,
-                                                      offset: const Offset(0, 2),
+                                                      offset:
+                                                          const Offset(0, 2),
                                                     ),
                                                   ],
                                                 ),
                                                 child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.end,
                                                   children: [
                                                     Text(
                                                       msg.content,
                                                       style: TextStyle(
-                                                        color: isMe ? Colors.white : const Color(0xFF1F2937),
+                                                        color: isMe
+                                                            ? Colors.white
+                                                            : const Color(
+                                                                0xFF1F2937),
                                                         fontSize: 14.5,
                                                         height: 1.3,
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Row(
-                                                      mainAxisSize: MainAxisSize.min,
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
                                                       children: [
                                                         Text(
-                                                          _formatTime(msg.timestamp),
+                                                          _formatTime(
+                                                              msg.timestamp),
                                                           style: TextStyle(
                                                             color: isMe
-                                                                ? Colors.white.withOpacity(0.7)
-                                                                : Colors.grey.shade400,
+                                                                ? Colors.white
+                                                                    .withOpacity(
+                                                                        0.7)
+                                                                : Colors.grey
+                                                                    .shade400,
                                                             fontSize: 9,
                                                           ),
                                                         ),
+                                                        // Read receipt ticks (sent messages only)
                                                         if (isMe) ...[
-                                                          const SizedBox(width: 4),
+                                                          const SizedBox(
+                                                              width: 4),
                                                           Icon(
                                                             msg.isRead
-                                                                ? Icons.done_all_rounded
-                                                                : Icons.done_rounded,
-                                                            color: Colors.white.withOpacity(0.85),
+                                                                ? Icons
+                                                                    .done_all_rounded
+                                                                : Icons
+                                                                    .done_rounded,
+                                                            color: msg.isRead
+                                                                ? Colors.blue
+                                                                    .shade200
+                                                                : Colors.white
+                                                                    .withOpacity(
+                                                                        0.85),
                                                             size: 11,
                                                           ),
                                                         ],
@@ -419,12 +479,14 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                               },
                             );
                           },
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (err, stack) => Center(child: Text('Error loading messages: $err')),
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
+                          error: (err, stack) =>
+                              Center(child: Text('Error loading messages: $err')),
                         ),
           ),
 
-          // Input field
+          // Message Input Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -441,20 +503,21 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
               top: false,
               child: Row(
                 children: [
-                  // Attachment Icon
+                  // Attachment Button
                   Container(
                     margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF3F4F6),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.add_rounded, color: Color(0xFF4B5563), size: 24),
+                      icon: const Icon(Icons.add_rounded,
+                          color: Color(0xFF4B5563), size: 24),
                       onPressed: () {},
                     ),
                   ),
 
-                  // Message Input
+                  // Text Input
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -475,14 +538,15 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                           ),
                           border: InputBorder.none,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
                         ),
                         style: const TextStyle(fontSize: 14.5),
                       ),
                     ),
                   ),
 
-                  // Send button
+                  // Send Button
                   const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () => _sendMessage(currentUserId),
@@ -494,7 +558,8 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                        child: Icon(Icons.send_rounded,
+                            color: Colors.white, size: 20),
                       ),
                     ),
                   ),

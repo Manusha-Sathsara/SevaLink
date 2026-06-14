@@ -49,8 +49,11 @@ class ChatMessageModel extends Equatable {
   final int id;
   final int chatRoomId;
   final int senderId;
+  final String senderName;
   final int recipientId;
+  final String recipientName;
   final String content;
+  final String messageType; // 'TEXT' | 'IMAGE'
   final DateTime timestamp;
   final bool isRead;
 
@@ -58,8 +61,11 @@ class ChatMessageModel extends Equatable {
     required this.id,
     required this.chatRoomId,
     required this.senderId,
+    this.senderName = '',
     required this.recipientId,
+    this.recipientName = '',
     required this.content,
+    this.messageType = 'TEXT',
     required this.timestamp,
     required this.isRead,
   });
@@ -69,8 +75,11 @@ class ChatMessageModel extends Equatable {
       id: json['id'] ?? 0,
       chatRoomId: json['chatRoom']?['id'] ?? json['chatRoomId'] ?? 0,
       senderId: json['sender']?['id'] ?? json['senderId'] ?? 0,
+      senderName: json['sender']?['fullName'] ?? json['senderName'] ?? '',
       recipientId: json['recipient']?['id'] ?? json['recipientId'] ?? 0,
+      recipientName: json['recipient']?['fullName'] ?? json['recipientName'] ?? '',
       content: json['content'] ?? '',
+      messageType: json['messageType'] ?? 'TEXT',
       timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp']).toLocal()
           : DateTime.now(),
@@ -85,6 +94,7 @@ class ChatMessageModel extends Equatable {
         senderId,
         recipientId,
         content,
+        messageType,
         timestamp,
         isRead,
       ];
