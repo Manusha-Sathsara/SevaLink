@@ -18,6 +18,7 @@ import {
 function App() {
 
   const [activePage, setActivePage] = useState("dashboard");
+  const [showFilter, setShowFilter] = useState(false);
   const [selectedRole, setSelectedRole] = useState("All");
   const pieData = [
   { name: "Users", value: 8542 },
@@ -244,70 +245,7 @@ const users = [
   </div>
   </div>
 
-{/* Charts Section */}
-<div className="mt-8 space-y-6">
 
-  {/* Bar Chart */}
-  <div className="bg-white p-6 rounded-3xl shadow-md">
-
-    <h2 className="text-2xl font-bold mb-4">
-      Monthly Jobs
-    </h2>
-
-    <ResponsiveContainer width="100%" height={300}>
-
-      <BarChart data={barData}>
-        <XAxis dataKey="month" />
-        <YAxis />
-        <Tooltip />
-        <Legend
-  layout="vertical"
-  align="right"
-  verticalAlign="middle"
-/>
-
-        <Bar
-          dataKey="jobs"
-          fill="#f97316"
-        />
-
-      </BarChart>
-
-    </ResponsiveContainer>
-
-  </div>
-
-  {/* Line Chart */}
-  <div className="bg-white p-6 rounded-3xl shadow-md">
-
-    <h2 className="text-2xl font-bold mb-4">
-      Weekly Users
-    </h2>
-
-    <ResponsiveContainer width="100%" height={300}>
-
-      <LineChart data={lineData}>
-
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="day" />
-        <YAxis />
-        <Tooltip />
-        <Legend />
-
-        <Line
-          type="monotone"
-          dataKey="users"
-          stroke="#22c55e"
-          strokeWidth={3}
-        />
-
-      </LineChart>
-
-    </ResponsiveContainer>
-
-  </div>
-
-</div>
 </div>     
 );
 }
@@ -403,16 +341,70 @@ const users = [
     className="flex-1 border border-gray-300 px-5 py-4 rounded-2xl"
   />
 
-  <select className="border border-gray-300 px-5 py-4 rounded-2xl bg-white">
+<div className="relative">
 
-    <option>All Categories</option>
-    <option>Plumbing</option>
-    <option>Electrical</option>
-    <option>Cleaning</option>
-    <option>Carpentry</option>
-    <option>Painting</option>
+  <button
+    onClick={() => setShowFilter(!showFilter)}
+    className="border border-gray-300 px-6 py-4 rounded-2xl bg-white hover:bg-gray-50"
+  >
+    🔍 Filter
+  </button>
 
-  </select>
+  {showFilter && (
+    <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-2xl p-4 z-50">
+
+      <h3 className="font-bold mb-3">
+        Filter Workers
+      </h3>
+
+      <div className="mb-4">
+        <p className="font-semibold mb-2">Status</p>
+
+        <label className="block">
+          <input type="checkbox" /> Verified
+        </label>
+
+        <label className="block">
+          <input type="checkbox" /> Pending
+        </label>
+
+        <label className="block">
+          <input type="checkbox" /> Rejected
+        </label>
+      </div>
+
+      <div className="mb-4">
+        <p className="font-semibold mb-2">Rating</p>
+
+        <label className="block">
+          <input type="checkbox" /> 4.5+
+        </label>
+
+        <label className="block">
+          <input type="checkbox" /> 4.0+
+        </label>
+      </div>
+
+      <div className="mb-4">
+        <p className="font-semibold mb-2">Jobs</p>
+
+        <label className="block">
+          <input type="checkbox" /> 50+
+        </label>
+
+        <label className="block">
+          <input type="checkbox" /> 100+
+        </label>
+      </div>
+
+      <button className="w-full bg-orange-500 text-white py-2 rounded-xl">
+        Apply Filters
+      </button>
+
+    </div>
+  )}
+
+</div>
 
 </div>
 
