@@ -1,0 +1,7 @@
+com\sevalink\sevalinkbackend\SevalinkBackendApplication.class
+com\sevalink\sevalinkbackend\config\CorsConfig$1.class
+com\sevalink\sevalinkbackend\controller\TestUserController.class
+com\sevalink\sevalinkbackend\HelloController.class
+com\sevalink\sevalinkbackend\repository\TestUserRepository.class
+com\sevalink\sevalinkbackend\model\TestUser.class
+com\sevalink\sevalinkbackend\config\CorsConfig.class
