@@ -66,6 +66,13 @@ const lineData = [
     jobs: 52,
   },
 ];
+const totalWorkers = workers.length;
+
+const pendingWorkers = workers.filter(w => w.status === "Pending").length;
+
+const verifiedWorkers = workers.filter(w => w.status === "Verified").length;
+
+const rejectedWorkers = workers.filter(w => w.status === "Rejected").length;
 const users = [
 
   {
@@ -332,6 +339,36 @@ const users = [
             Worker Verification
           </h1>
 
+          <div className="grid grid-cols-4 gap-6 mb-8">
+
+  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-orange-500">
+    <p className="text-gray-500">Total Workers</p>
+    <h1 className="text-4xl font-bold mt-2">{workers.length}</h1>
+  </div>
+
+  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-yellow-400">
+    <p className="text-gray-500">Pending Workers</p>
+    <h1 className="text-4xl font-bold mt-2">
+      {workers.filter(w => w.status === "Pending").length}
+    </h1>
+  </div>
+
+  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-green-500">
+    <p className="text-gray-500">Verified Workers</p>
+    <h1 className="text-4xl font-bold mt-2">
+      {workers.filter(w => w.status === "Verified").length}
+    </h1>
+  </div>
+
+  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-red-500">
+    <p className="text-gray-500">Rejected Workers</p>
+    <h1 className="text-4xl font-bold mt-2">
+      {workers.filter(w => w.status === "Rejected").length}
+    </h1>
+  </div>
+
+</div>
+
           <div className="bg-white rounded-3xl shadow-md p-6">
             <div className="flex gap-4 mb-6">
 
@@ -433,6 +470,15 @@ const users = [
   <button className="bg-gray-300 px-5 py-3 rounded-2xl">
     Painting
   </button>
+
+  <select className="border border-gray-300 px-5 py-3 rounded-2xl bg-white">
+    <option>More Categories</option>
+    <option>Gardening</option>
+    <option>AC Repair</option>
+    <option>Masonry</option>
+    <option>Roofing</option>
+    <option>Appliance Repair</option>
+  </select>
 
 </div>
 
@@ -602,15 +648,6 @@ const users = [
     className="flex-1 border border-gray-300 px-5 py-4 rounded-2xl"
   />
 
-  <select className="border border-gray-300 px-5 py-4 rounded-2xl bg-white">
-
-    <option>All Roles</option>
-    <option>Clients</option>
-    <option>Workers</option>
-    <option>Admins</option>
-    <option>Blocked</option>
-
-  </select>
 
 </div>
 
@@ -802,65 +839,7 @@ if (activePage === "jobs") {
           </div>
 
         </div>
-        <div className="grid grid-cols-4 gap-6 mb-8">
-
-  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-orange-500">
-    <p className="text-gray-500 text-sm">
-      Total Users
-    </p>
-
-    <h1 className="text-5xl font-bold mt-3 text-gray-800">
-      8,542
-    </h1>
-
-    <p className="text-green-500 mt-2 text-sm">
-      +12% this month
-    </p>
-  </div>
-
-  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-yellow-400">
-    <p className="text-gray-500 text-sm">
-      Total Workers
-    </p>
-
-    <h1 className="text-5xl font-bold mt-3 text-gray-800">
-      2,145
-    </h1>
-
-    <p className="text-green-500 mt-2 text-sm">
-      +8% this month
-    </p>
-  </div>
-
-  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-green-500">
-    <p className="text-gray-500 text-sm">
-      Total Jobs
-    </p>
-
-    <h1 className="text-5xl font-bold mt-3 text-gray-800">
-      1,245
-    </h1>
-
-    <p className="text-orange-500 mt-2 text-sm">
-      84 Pending Jobs
-    </p>
-  </div>
-
-  <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-red-500">
-    <p className="text-gray-500 text-sm">
-      Online Users
-    </p>
-
-    <h1 className="text-5xl font-bold mt-3 text-gray-800">
-      542
-    </h1>
-
-    <p className="text-green-500 mt-2 text-sm">
-      Active Now
-    </p>
-  </div>
-
-</div>
+   
 
         {/* Search */}
         <div className="flex gap-4 mb-6">
@@ -870,15 +849,6 @@ if (activePage === "jobs") {
             placeholder="Search jobs..."
             className="flex-1 border border-gray-300 px-5 py-4 rounded-2xl"
           />
-
-          <select className="border border-gray-300 px-5 py-4 rounded-2xl bg-white">
-
-            <option>All Status</option>
-            <option>Pending</option>
-            <option>Completed</option>
-            <option>Cancelled</option>
-
-          </select>
 
         </div>
 
