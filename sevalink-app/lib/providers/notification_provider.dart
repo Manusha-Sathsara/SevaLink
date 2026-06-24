@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/notification_model.dart';
 import 'auth_provider.dart';
+import '../services/local_notification_service.dart';
 
 class NotificationState {
   final List<NotificationModel> notifications;
@@ -29,14 +30,15 @@ class NotificationState {
 
 class NotificationNotifier extends Notifier<NotificationState> {
   Timer? _timer;
+  int? _lastNotificationId;
 
   @override
   NotificationState build() {
     // Schedule the initial fetch after the provider is initialized
     Future.microtask(() => fetchNotifications());
     
-    // Poll every 30 seconds
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+    // Poll every 8 seconds
+    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
       fetchNotifications();
     });
 
@@ -62,6 +64,26 @@ class NotificationNotifier extends Notifier<NotificationState> {
       final List<dynamic> notifsJson = data['notifications'];
       final List<NotificationModel> notifications = notifsJson.map((json) => NotificationModel.fromJson(json)).toList();
       final int unreadCount = data['unreadCount'];
+
+      // Show local push notifications for any new items
+      if (notifications.isNotEmpty) {
+        final maxId = notifications.map((n) => n.id).reduce((a, b) => a > b ? a : b);
+        
+        if (_lastNotificationId != null) {
+          // Trigger push notifications for any notification with id > _lastNotificationId
+          for (final notif in notifications) {
+            if (notif.id > _lastNotificationId!) {
+              await LocalNotificationService.showNotification(
+                id: notif.id,
+                title: notif.title,
+                body: notif.message,
+              );
+            }
+          }
+        }
+        
+        _lastNotificationId = maxId;
+      }
 
       state = state.copyWith(
         notifications: notifications,

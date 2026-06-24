@@ -152,7 +152,33 @@ public class JobPostService {
         timeline.setJobPost(job);
         timeline.setStatus(status);
         timeline.setNote(note);
-        return jobTimelineRepository.save(timeline);
+        JobTimeline saved = jobTimelineRepository.save(timeline);
+
+        // Notify client about timeline state changes
+        try {
+            Quotation acceptedQuote = quotationRepository.findByJobPostIdAndStatus(job.getId(), "ACCEPTED").orElse(null);
+            String workerName = (acceptedQuote != null && acceptedQuote.getWorker() != null && acceptedQuote.getWorker().getUser() != null)
+                    ? acceptedQuote.getWorker().getUser().getFullName()
+                    : "Worker";
+
+            if ("WORKER_EN_ROUTE".equals(status)) {
+                createNotification(job.getClient(), job, "Worker On The Way", 
+                    "Worker " + workerName + " is on the way to your location.");
+            } else if ("WORKER_ARRIVED".equals(status)) {
+                createNotification(job.getClient(), job, "Worker Arrived", 
+                    "Worker " + workerName + " has arrived at your location.");
+            } else if ("JOB_STARTED".equals(status)) {
+                createNotification(job.getClient(), job, "Job Started", 
+                    "Work has started on '" + job.getTitle() + "'.");
+            } else if ("JOB_DONE".equals(status)) {
+                createNotification(job.getClient(), job, "Job Completed by Worker", 
+                    "Worker " + workerName + " marked the job '" + job.getTitle() + "' as completed. Please confirm payment.");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to create timeline notifications: " + e.getMessage());
+        }
+
+        return saved;
     }
 
     // Client deletes/removes a job post
@@ -182,6 +208,13 @@ public class JobPostService {
                 throw new RuntimeException("Unauthorized client for this job");
             }
             job.setClientPaymentConfirmed(true);
+
+            // Notify worker that client confirmed payment
+            Quotation acceptedQuote = quotationRepository.findByJobPostIdAndStatus(jobId, "ACCEPTED").orElse(null);
+            if (acceptedQuote != null && acceptedQuote.getWorker() != null && acceptedQuote.getWorker().getUser() != null) {
+                createNotification(acceptedQuote.getWorker().getUser(), job, "Payment Confirmed by Client",
+                        "The client has confirmed payment for the job '" + job.getTitle() + "'.");
+            }
         } else if (UserRole.WORKER.equals(user.getRole())) {
             Worker worker = workerRepository.findByUserId(user.getId())
                     .orElseThrow(() -> new RuntimeException("Worker profile not found"));
@@ -191,6 +224,10 @@ public class JobPostService {
                 throw new RuntimeException("Unauthorized worker for this job");
             }
             job.setWorkerPaymentConfirmed(true);
+
+            // Notify client that worker confirmed payment
+            createNotification(job.getClient(), job, "Payment Confirmed by Worker",
+                    "The worker " + user.getFullName() + " has confirmed receipt of payment for the job '" + job.getTitle() + "'.");
         } else {
             throw new RuntimeException("Invalid role for payment confirmation");
         }
@@ -212,6 +249,18 @@ public class JobPostService {
                 Worker worker = acceptedQuote.getWorker();
                 worker.setTotalJobs((worker.getTotalJobs() != null ? worker.getTotalJobs() : 0) + 1);
                 workerRepository.save(worker);
+            }
+
+            // Notify both parties that the job is fully completed
+            try {
+                if (acceptedQuote != null && acceptedQuote.getWorker() != null && acceptedQuote.getWorker().getUser() != null) {
+                    createNotification(acceptedQuote.getWorker().getUser(), job, "Job Fully Completed",
+                            "Payment confirmed by both parties. Job '" + job.getTitle() + "' is fully completed!");
+                }
+                createNotification(job.getClient(), job, "Job Fully Completed",
+                        "Payment confirmed by both parties. Job '" + job.getTitle() + "' is fully completed!");
+            } catch (Exception e) {
+                System.err.println("Failed to send completion notifications: " + e.getMessage());
             }
         }
 
@@ -246,6 +295,22 @@ public class JobPostService {
         timeline.setStatus("COMPLAINT_FILED");
         timeline.setNote("Complaint filed by " + user.getRole().name() + ": " + description);
         jobTimelineRepository.save(timeline);
+
+        // Send notification to the other party
+        try {
+            if (UserRole.CLIENT.equals(user.getRole())) {
+                Quotation acceptedQuote = quotationRepository.findByJobPostIdAndStatus(jobId, "ACCEPTED").orElse(null);
+                if (acceptedQuote != null && acceptedQuote.getWorker() != null && acceptedQuote.getWorker().getUser() != null) {
+                    createNotification(acceptedQuote.getWorker().getUser(), job, "Complaint Filed by Client",
+                            "The client filed a complaint for the job '" + job.getTitle() + "': " + description);
+                }
+            } else if (UserRole.WORKER.equals(user.getRole())) {
+                createNotification(job.getClient(), job, "Complaint Filed by Worker",
+                        "The worker filed a complaint for the job '" + job.getTitle() + "': " + description);
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send complaint notification: " + e.getMessage());
+        }
 
         return saved;
     }
@@ -471,5 +536,18 @@ public class JobPostService {
 
     public Optional<JobPost> getJobByIdProcessed(Long id) {
         return getJobById(id).map(job -> processJobPostForUser(job, null, null));
+    }
+
+    private void createNotification(User user, JobPost jobPost, String title, String message) {
+        try {
+            Notification notification = new Notification();
+            notification.setUser(user);
+            notification.setJobPost(jobPost);
+            notification.setTitle(title);
+            notification.setMessage(message);
+            notificationRepository.save(notification);
+        } catch (Exception e) {
+            System.err.println("Failed to create notification: " + e.getMessage());
+        }
     }
 }
