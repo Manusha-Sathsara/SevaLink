@@ -14,6 +14,7 @@ import '../../../providers/notification_provider.dart';
 import '../../../core/themes/app_theme.dart';
 import '../../jobs/screens/job_location_picker_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/utils/location_helper.dart';
 
 // (Mock data removed — now using real backend feed)
 
@@ -402,8 +403,9 @@ class _Header extends ConsumerWidget {
                       final lng = result['longitude'] as double?;
                       final address = result['address'] as String? ?? '';
                       if (address.isNotEmpty) {
+                        final approxLocation = getApproximateLocation(address);
                         await ref.read(workerFeedProvider.notifier).updateLocation(
-                          location: address,
+                          location: approxLocation,
                           latitude: lat,
                           longitude: lng,
                         );

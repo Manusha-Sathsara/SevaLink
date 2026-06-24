@@ -7,6 +7,7 @@ import 'search_screen.dart';
 import 'notifications_drawer.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../jobs/screens/job_location_picker_screen.dart';
+import '../../../core/utils/location_helper.dart';
 
 // ============================================================================
 // DOMAIN MODELS (Mock Data Structures)
@@ -335,7 +336,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 final lng = result['longitude'] as double?;
                 final address = result['address'] as String? ?? '';
                 if (address.isNotEmpty) {
-                  final approxLocation = _getApproximateLocation(address);
+                  final approxLocation = getApproximateLocation(address);
                   ref.read(authProvider.notifier).updateLocation(
                     location: approxLocation,
                     latitude: lat,
@@ -799,47 +800,5 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
         ],
       ),
     );
-  }
-
-  String _getApproximateLocation(String address) {
-    if (address.isEmpty) return '';
-    final parts = address.split(',').map((p) => p.trim()).toList();
-    
-    if (parts.length <= 1) return address;
-
-    if (parts.last.toLowerCase() == 'sri lanka') {
-      parts.removeLast();
-    }
-
-    if (parts.isEmpty) return 'Unknown Location';
-
-    if (parts.length >= 2) {
-      if (parts.first.contains('+')) {
-        parts.removeAt(0);
-      }
-    }
-
-    final cleanParts = parts.where((part) {
-      final lower = part.toLowerCase();
-      return !lower.contains('road') &&
-             !lower.contains(' rd') &&
-             !lower.contains('mawatha') &&
-             !lower.contains('lane') &&
-             !lower.contains(' st') &&
-             !lower.contains('street') &&
-             !lower.contains('ave') &&
-             !lower.contains('avenue') &&
-             !lower.contains('highway');
-    }).toList();
-
-    if (cleanParts.isNotEmpty) {
-      if (cleanParts.length >= 2) {
-        return "${cleanParts[cleanParts.length - 2]}, ${cleanParts.last}";
-      } else {
-        return cleanParts.last;
-      }
-    }
-
-    return parts.last;
   }
 }
