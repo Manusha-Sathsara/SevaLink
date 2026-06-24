@@ -13,6 +13,8 @@ const _kLocation  = 'profile_location';
 const _kBio       = 'profile_bio';
 const _kRate      = 'profile_rate';
 const _kImagePath = 'profile_image_path';
+const _kLatitude  = 'profile_latitude';
+const _kLongitude = 'profile_longitude';
 
 // ProfileExtra
 class ProfileExtra {
@@ -20,12 +22,16 @@ class ProfileExtra {
   final String bio;
   final String hourlyRate;
   final String? profileImagePath;
+  final double? latitude;
+  final double? longitude;
 
   const ProfileExtra({
     this.location = 'Colombo, Sri Lanka',
     this.bio = 'Experienced electrician with 8+ years working on residential and commercial projects.',
     this.hourlyRate = '2,500',
     this.profileImagePath,
+    this.latitude,
+    this.longitude,
   });
 
   ProfileExtra copyWith({
@@ -33,6 +39,8 @@ class ProfileExtra {
     String? bio,
     String? hourlyRate,
     String? profileImagePath,
+    double? latitude,
+    double? longitude,
     bool clearProfileImage = false,
   }) {
     return ProfileExtra(
@@ -41,6 +49,8 @@ class ProfileExtra {
       hourlyRate: hourlyRate ?? this.hourlyRate,
       profileImagePath:
           clearProfileImage ? null : (profileImagePath ?? this.profileImagePath),
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }
@@ -121,6 +131,8 @@ class AuthNotifier extends Notifier<AuthState> {
       bio:              prefs.getString('${_kBio}_${apiUser.id}')        ?? 'Experienced electrician with 8+ years working on residential and commercial projects.',
       hourlyRate:       prefs.getString('${_kRate}_${apiUser.id}')       ?? '2,500',
       profileImagePath: prefs.getString('${_kImagePath}_${apiUser.id}'),
+      latitude:         prefs.getDouble('${_kLatitude}_${apiUser.id}'),
+      longitude:        prefs.getDouble('${_kLongitude}_${apiUser.id}'),
     );
 
     final effectiveUser = User(
@@ -148,6 +160,8 @@ class AuthNotifier extends Notifier<AuthState> {
     required String hourlyRate,
     String? imagePath,
     bool clearImage = false,
+    double? latitude,
+    double? longitude,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('${_kName}_$userId',     fullName);
@@ -155,6 +169,12 @@ class AuthNotifier extends Notifier<AuthState> {
     await prefs.setString('${_kLocation}_$userId', location);
     await prefs.setString('${_kBio}_$userId',      bio);
     await prefs.setString('${_kRate}_$userId',     hourlyRate);
+    if (latitude != null) {
+      await prefs.setDouble('${_kLatitude}_$userId', latitude);
+    }
+    if (longitude != null) {
+      await prefs.setDouble('${_kLongitude}_$userId', longitude);
+    }
     if (clearImage) {
       await prefs.remove('${_kImagePath}_$userId');
     } else if (imagePath != null) {
@@ -250,7 +270,38 @@ class AuthNotifier extends Notifier<AuthState> {
       hourlyRate:  state.profileExtra.hourlyRate,
       imagePath:   imagePath,
       clearImage:  imagePath == null,
+      latitude:    state.profileExtra.latitude,
+      longitude:   state.profileExtra.longitude,
     );
+  }
+
+  // ── Update profile location (in-memory + disk) ────────────────────────────
+  void updateLocation({
+    required String location,
+    double? latitude,
+    double? longitude,
+  }) {
+    state = state.copyWith(
+      profileExtra: state.profileExtra.copyWith(
+        location: location,
+        latitude: latitude,
+        longitude: longitude,
+      ),
+    );
+    // Persist to disk
+    if (state.user != null) {
+      _saveProfileToPrefs(
+        userId:      state.user!.id,
+        fullName:    state.user!.fullName,
+        phoneNumber: state.user!.phoneNumber,
+        location:    location,
+        bio:         state.profileExtra.bio,
+        hourlyRate:  state.profileExtra.hourlyRate,
+        imagePath:   state.profileExtra.profileImagePath,
+        latitude:    latitude,
+        longitude:   longitude,
+      );
+    }
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────
