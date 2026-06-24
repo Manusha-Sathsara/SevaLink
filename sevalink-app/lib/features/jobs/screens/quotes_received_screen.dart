@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../providers/quotation_provider.dart';
 import '../../../data/models/quotation_model.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/client_jobs_provider.dart';
 
 class QuotesReceivedScreen extends ConsumerWidget {
   final int jobId;
@@ -40,6 +42,22 @@ class QuotesReceivedScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final quotesAsync = ref.watch(jobQuotationsProvider(jobId));
+
+    Map<String, dynamic> resolvedDetails = jobDetails;
+    if (resolvedDetails.isEmpty) {
+      final user = ref.watch(authProvider).user;
+      if (user != null) {
+        final clientJobsAsync = ref.watch(clientJobsProvider(ClientJobsParams(clientId: user.id, status: 'ALL')));
+        resolvedDetails = clientJobsAsync.when(
+          data: (jobs) => jobs.firstWhere(
+            (job) => job['id'] == jobId,
+            orElse: () => jobDetails,
+          ),
+          loading: () => jobDetails,
+          error: (err, stack) => jobDetails,
+        );
+      }
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -88,7 +106,7 @@ class QuotesReceivedScreen extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: _buildJobHeader(),
+              child: _buildJobHeader(resolvedDetails),
             ),
             quotesAsync.when(
               data: (quotes) {
@@ -137,12 +155,12 @@ class QuotesReceivedScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildJobHeader() {
-    final title = jobDetails['title'] ?? 'Electrical Wiring for New Kitchen';
-    final description = jobDetails['description'] ?? 'Need complete electrical wiring for newly renovated kitchen...';
-    final budgetMin = jobDetails['budgetMin'];
-    final budgetMax = jobDetails['budgetMax'];
-    final createdAt = jobDetails['createdAt']?.toString();
+  Widget _buildJobHeader(Map<String, dynamic> details) {
+    final title = details['title'] ?? 'Electrical Wiring for New Kitchen';
+    final description = details['description'] ?? 'Need complete electrical wiring for newly renovated kitchen...';
+    final budgetMin = details['budgetMin'];
+    final budgetMax = details['budgetMax'];
+    final createdAt = details['createdAt']?.toString();
 
     return Container(
       margin: const EdgeInsets.all(16),

@@ -177,6 +177,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const WorkerHomeScreen(),
       ),
       GoRoute(
+        path: '/worker/chat',
+        builder: (context, state) => const ChatListScreen(showBottomNav: false),
+      ),
+      GoRoute(
         path: '/worker/chat/:userId',
         builder: (context, state) {
           final userId = int.tryParse(state.pathParameters['userId'] ?? '0') ?? 0;

@@ -4,6 +4,7 @@ import com.sevalink.sevalinkbackend.model.Notification;
 import com.sevalink.sevalinkbackend.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -38,4 +39,32 @@ public class NotificationController {
             return ResponseEntity.ok(saved);
         }).orElse(ResponseEntity.notFound().build());
     }
+
+    @Transactional
+    @PutMapping("/user/{userId}/read-all")
+    public ResponseEntity<?> markAllAsRead(@PathVariable Long userId) {
+        List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        for (Notification notification : notifications) {
+            notification.setIsRead(true);
+        }
+        notificationRepository.saveAll(notifications);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("unreadCount", 0);
+        return ResponseEntity.ok(response);
+    }
+
+    @Transactional
+    @DeleteMapping("/user/{userId}/clear-all")
+    public ResponseEntity<?> clearAllNotifications(@PathVariable Long userId) {
+        List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        notificationRepository.deleteAll(notifications);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("unreadCount", 0);
+        return ResponseEntity.ok(response);
+    }
 }
+

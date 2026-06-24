@@ -124,6 +124,53 @@ class NotificationNotifier extends Notifier<NotificationState> {
       // Revert or show error
     }
   }
+
+  Future<void> markAllAsRead() async {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    try {
+      final dioClient = ref.read(dioClientProvider);
+      await dioClient.dio.put('/notifications/user/${user.id}/read-all');
+      
+      // Update local state immediately
+      final updatedNotifications = state.notifications.map((n) {
+        return NotificationModel(
+          id: n.id,
+          workerId: n.workerId,
+          title: n.title,
+          message: n.message,
+          relatedJobId: n.relatedJobId,
+          isRead: true,
+          createdAt: n.createdAt,
+        );
+      }).toList();
+      
+      state = state.copyWith(
+        notifications: updatedNotifications,
+        unreadCount: 0,
+      );
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> clearAll() async {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    try {
+      final dioClient = ref.read(dioClientProvider);
+      await dioClient.dio.delete('/notifications/user/${user.id}/clear-all');
+      
+      state = state.copyWith(
+        notifications: const [],
+        unreadCount: 0,
+      );
+    } catch (e) {
+      // Handle error
+    }
+  }
 }
 
 final notificationProvider = NotifierProvider<NotificationNotifier, NotificationState>(NotificationNotifier.new);
