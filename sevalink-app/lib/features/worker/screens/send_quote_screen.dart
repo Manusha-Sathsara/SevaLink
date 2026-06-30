@@ -1,0 +1,721 @@
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
+import '../../../data/models/job.dart';
+import '../../../core/themes/app_theme.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/worker_feed_provider.dart';
+
+class SendQuoteScreen extends ConsumerStatefulWidget {
+  final Job job;
+
+  const SendQuoteScreen({super.key, required this.job});
+
+  @override
+  ConsumerState<SendQuoteScreen> createState() => _SendQuoteScreenState();
+}
+
+class _SendQuoteScreenState extends ConsumerState<SendQuoteScreen>
+    with SingleTickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _messageController = TextEditingController();
+  final _timelineController = TextEditingController();
+
+  int _selectedTimeline = 0; // 0=Hours, 1=Days, 2=Weeks
+  bool _isSubmitting = false;
+  bool _submitted = false;
+
+  late AnimationController _animController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  final List<String> _timelineUnits = ['Hours', 'Days', 'Weeks'];
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation =
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _amountController.dispose();
+    _messageController.dispose();
+    _timelineController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitQuote() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSubmitting = true);
+
+    try {
+      final dioClient = ref.read(dioClientProvider);
+      final user = ref.read(authProvider).user;
+
+      if (user == null) throw Exception('Not logged in');
+
+      // Get this worker's own worker-profile ID directly via JWT (no list search needed)
+      int workerId = 0;
+      try {
+        final meRes = await dioClient.dio.get('/workers/me');
+        workerId = (meRes.data['id'] as num?)?.toInt() ?? 0;
+      } catch (e) {
+        throw Exception('Worker profile not found. Please complete your profile first.');
+      }
+
+      if (workerId == 0) throw Exception('Worker profile not found');
+
+      // Build ETA string e.g. "3 Days"
+      final eta =
+          '${_timelineController.text} ${_timelineUnits[_selectedTimeline]}';
+
+      // POST /api/quotations
+      await dioClient.dio.post(
+        '/quotations',
+        data: {
+          'jobPost': {'id': widget.job.id},
+          'worker': {'id': workerId},
+          'proposedPrice': double.tryParse(_amountController.text) ?? 0,
+          'message': _messageController.text.trim(),
+          'eta': eta,
+        },
+      );
+
+      // Refresh the feed so the job count updates
+      ref.read(workerFeedProvider.notifier).refresh();
+
+      setState(() {
+        _isSubmitting = false;
+        _submitted = true;
+      });
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
+      String errorMessage = e.toString().replaceAll('Exception: ', '');
+      if (e is DioException && e.response?.data != null) {
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('message')) {
+          errorMessage = data['message'].toString();
+        } else if (data is String && data.isNotEmpty) {
+          errorMessage = data;
+        } else {
+          errorMessage = 'Server Error: $data';
+        }
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            errorMessage,
+            style: const TextStyle(color: Colors.white),
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_submitted) return _buildSuccessScreen(context);
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: CustomScrollView(
+            slivers: [
+              _buildAppBar(context),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildJobSummaryCard(),
+                        const SizedBox(height: 24),
+                        _buildSectionLabel('Your Quote Amount *'),
+                        const SizedBox(height: 10),
+                        _buildAmountField(),
+                        const SizedBox(height: 6),
+                        _buildBudgetHint(),
+                        const SizedBox(height: 24),
+                        _buildSectionLabel('Estimated Completion Time *'),
+                        const SizedBox(height: 10),
+                        _buildTimelineRow(),
+                        const SizedBox(height: 24),
+                        _buildSectionLabel('Your Message to Client *'),
+                        const SizedBox(height: 10),
+                        _buildMessageField(),
+                        const SizedBox(height: 24),
+                        _buildTipsCard(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: _buildSubmitBar(context),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return SliverAppBar(
+      pinned: true,
+      backgroundColor: const Color(0xFF054A29),
+      leading: GestureDetector(
+        onTap: () => context.pop(),
+        child: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Colors.white, size: 18),
+        ),
+      ),
+      title: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Send Quote',
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold),
+          ),
+          Text(
+            'Submit your bid for this job',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+        ],
+      ),
+      expandedHeight: 70,
+    );
+  }
+
+  Widget _buildJobSummaryCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2A9134), Color(0xFF3FA34D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2A9134).withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.work_outline_rounded,
+                  color: Colors.white70, size: 14),
+              SizedBox(width: 6),
+              Text('Job Summary',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            widget.job.title,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.location_on_outlined,
+                  color: Colors.white60, size: 14),
+              const SizedBox(width: 4),
+              Text(widget.job.location,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 13)),
+              const Spacer(),
+              const Icon(Icons.access_time_rounded,
+                  color: Colors.white60, size: 14),
+              const SizedBox(width: 4),
+              Text(widget.job.postedAt,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.currency_rupee,
+                    color: Colors.white, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  'Budget: Rs. ${widget.job.minBudget} - Rs. ${widget.job.maxBudget}',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: context.sevaColors.textPrimary,
+        letterSpacing: 0.2,
+      ),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String hint) {
+    final colors = context.sevaColors;
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+          color: colors.textSecondary, fontWeight: FontWeight.normal),
+      filled: true,
+      fillColor: colors.inputFill,
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colors.border, width: 1)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide:
+              const BorderSide(color: Color(0xFF054A29), width: 2)),
+      errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide:
+              const BorderSide(color: Color(0xFFEF4444), width: 1.5)),
+      focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide:
+              const BorderSide(color: Color(0xFFEF4444), width: 2)),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    );
+  }
+
+  Widget _buildAmountField() {
+    return TextFormField(
+      controller: _amountController,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: context.sevaColors.textPrimary),
+      decoration: _fieldDecoration('Enter your quote amount').copyWith(
+        prefixText: 'Rs. ',
+        prefixStyle: const TextStyle(
+          color: Color(0xFF054A29),
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+      validator: (val) {
+        if (val == null || val.isEmpty) return 'Please enter your quote amount';
+        final amount = int.tryParse(val);
+        if (amount == null || amount <= 0) return 'Enter a valid amount';
+        return null;
+      },
+    );
+  }
+
+  Widget _buildBudgetHint() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              size: 13, color: Color(0xFF9CA3AF)),
+          const SizedBox(width: 5),
+          Text(
+            'Client budget: Rs. ${widget.job.minBudget} – Rs. ${widget.job.maxBudget}',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: _timelineController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: context.sevaColors.textPrimary),
+            decoration: _fieldDecoration('e.g. 3'),
+            validator: (val) {
+              if (val == null || val.isEmpty) return 'Required';
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Timeline unit toggle
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            color: context.sevaColors.cardBg,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: context.sevaColors.border, width: 1),
+          ),
+          child: Row(
+            children: List.generate(_timelineUnits.length, (i) {
+              final selected = _selectedTimeline == i;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedTimeline = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFF054A29)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _timelineUnits[i],
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: selected
+                          ? Colors.white
+                          : context.sevaColors.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMessageField() {
+    return TextFormField(
+      controller: _messageController,
+      maxLines: 5,
+      style: TextStyle(
+          fontSize: 15, color: context.sevaColors.textPrimary, height: 1.5),
+      decoration: _fieldDecoration(
+          'Introduce yourself and explain why you\'re the best fit for this job. Mention your experience, tools you\'ll use, and any questions you have...'),
+      validator: (val) {
+        if (val == null || val.trim().isEmpty) {
+          return 'Please write a message to the client';
+        }
+        if (val.trim().length < 20) {
+          return 'Message must be at least 20 characters';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildTipsCard() {
+    final isDark = context.isDark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0D2218) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: isDark ? const Color(0xFF166534) : const Color(0xFF86EFAC),
+            width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb_outline_rounded,
+                  color: Color(0xFF16A34A), size: 16),
+              SizedBox(width: 8),
+              Text(
+                'Tips for a winning quote',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF16A34A)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildTip('Be competitive but realistic with your price'),
+          _buildTip('Mention your relevant experience clearly'),
+          _buildTip('Respond quickly — clients prefer fast responses'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTip(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: Icon(Icons.check_circle_outline_rounded,
+                color: Color(0xFF16A34A), size: 13),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: context.sevaColors.textPrimary,
+                    height: 1.4)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitBar(BuildContext context) {
+    final colors = context.sevaColors;
+    final isDark  = context.isDark;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      decoration: BoxDecoration(
+        color: colors.cardBg,
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _isSubmitting ? null : _submitQuote,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF054A29),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor:
+              const Color(0xFF054A29).withValues(alpha: 0.6),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 0,
+        ),
+        child: _isSubmitting
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2.5),
+              )
+            : const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.send_rounded, size: 20),
+                  SizedBox(width: 10),
+                  Text(
+                    'Submit Quote',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessScreen(BuildContext context) {
+    final colors = context.sevaColors;
+    return Scaffold(
+      backgroundColor: colors.bodyBg,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.elasticOut,
+                builder: (context, value, child) =>
+                    Transform.scale(scale: value, child: child),
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF0FDF4),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: Color(0xFF054A29),
+                    size: 70,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                'Quote Sent!',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF054A29),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Your quote for "${widget.job.title}" has been sent successfully. The client will review it and get back to you.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 15,
+                    color: colors.textSecondary,
+                    height: 1.6),
+              ),
+              const SizedBox(height: 40),
+              _buildSuccessStat('Quote Amount',
+                  'Rs. ${_amountController.text}', Icons.attach_money_rounded),
+              const SizedBox(height: 12),
+              _buildSuccessStat(
+                'Estimated Time',
+                '${_timelineController.text} ${_timelineUnits[_selectedTimeline]}',
+                Icons.schedule_rounded,
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => context.go('/worker/home'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF054A29),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Back to Dashboard',
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextButton(
+                onPressed: () => context.go('/worker/home'),
+                child: const Text(
+                  'View My Jobs',
+                  style: TextStyle(
+                      color: Color(0xFF054A29),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuccessStat(String label, String value, IconData icon) {
+    final colors = context.sevaColors;
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: BoxDecoration(
+        color: colors.cardBg2,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF054A29), size: 22),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 12, color: colors.textSecondary)),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: colors.textPrimary),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
