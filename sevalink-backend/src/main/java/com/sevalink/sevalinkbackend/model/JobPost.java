@@ -51,4 +51,16 @@ public class JobPost {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "deletion_reason")
+    private String deletionReason;
+
+    @Column(name = "client_payment_confirmed")
+    private Boolean clientPaymentConfirmed = false;
+
+    @Column(name = "worker_payment_confirmed")
+    private Boolean workerPaymentConfirmed = false;
+
+    @Transient
+    private Double distanceKm;
 }

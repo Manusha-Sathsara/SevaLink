@@ -16,4 +16,6 @@ public interface QuotationRepository extends JpaRepository<Quotation, Long> {
     Optional<Quotation> findByJobPostIdAndWorkerId(Long jobPostId, Long workerId);
 
     Optional<Quotation> findByJobPostIdAndStatus(Long jobPostId, String status);
+
+    void deleteByJobPostId(Long jobPostId);
 }

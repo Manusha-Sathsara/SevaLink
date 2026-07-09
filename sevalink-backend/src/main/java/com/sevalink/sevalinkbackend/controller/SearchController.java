@@ -2,6 +2,7 @@ package com.sevalink.sevalinkbackend.controller;
 
 import com.sevalink.sevalinkbackend.model.Worker;
 import com.sevalink.sevalinkbackend.service.SearchService;
+import com.sevalink.sevalinkbackend.dto.SearchSuggestion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -55,5 +56,12 @@ public class SearchController {
             @RequestParam(required = false) Double lng,
             @RequestParam(required = false) Double radius) {
         return searchService.fullSearch(keyword, category, available, lat, lng, radius);
+    }
+
+    // 6. Autocomplete suggestions
+    // GET /api/search/suggestions?query=elec
+    @GetMapping("/suggestions")
+    public List<SearchSuggestion> getSuggestions(@RequestParam String query) {
+        return searchService.getSuggestions(query);
     }
 }

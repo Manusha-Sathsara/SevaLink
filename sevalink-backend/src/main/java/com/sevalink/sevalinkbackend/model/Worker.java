@@ -1,6 +1,16 @@
 package com.sevalink.sevalinkbackend.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.Data;
 
 @Data
@@ -22,16 +32,37 @@ public class Worker {
 
     private String bio;
 
+    private String skills;
+
     @Column(name = "hourly_rate")
     private Double hourlyRate;
 
     private Double rating = 0.0;
 
+    @Column(name = "total_reviews")
+    private Integer totalReviews = 0;
+
     @Column(name = "total_jobs")
     private Integer totalJobs = 0;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private WorkerStatus status = WorkerStatus.PENDING;
+
     @Column(name = "is_available")
     private Boolean isAvailable = true;
+
+    @Column(name = "nic_number")
+    private String nicNumber;
+
+    @Column(name = "verification_document_url")
+    private String verificationDocumentUrl;
+
+    @Column(name = "police_report_url")
+    private String policeReportUrl;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
 
     private Double latitude;
     private Double longitude;

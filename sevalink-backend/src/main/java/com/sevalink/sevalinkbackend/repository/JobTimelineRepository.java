@@ -9,4 +9,6 @@ import java.util.List;
 public interface JobTimelineRepository extends JpaRepository<JobTimeline, Long> {
 
     List<JobTimeline> findByJobPostIdOrderByUpdatedAtAsc(Long jobPostId);
+
+    void deleteByJobPostId(Long jobPostId);
 }
