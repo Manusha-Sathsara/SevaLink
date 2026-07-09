@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../providers/auth_provider.dart';
 import 'search_screen.dart';
+import 'notifications_drawer.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../jobs/screens/job_location_picker_screen.dart';
+import '../../../core/utils/location_helper.dart';
 
 // ============================================================================
 // DOMAIN MODELS (Mock Data Structures)
@@ -54,6 +58,7 @@ class ClientDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final int _currentNavIndex = 0;
 
   void _onNavTapped(int index) {
@@ -120,6 +125,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     // Reactively read name and location from authProvider for real-time updates
     String displayFullName = "Dilini Rajapaksa";
     String displayLocation = "Dehiwala, Colombo";
+    double? latitude;
+    double? longitude;
 
     try {
       final authState = ref.watch(authProvider);
@@ -131,11 +138,14 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       if (location.isNotEmpty) {
         displayLocation = location;
       }
+      latitude = authState.profileExtra.latitude;
+      longitude = authState.profileExtra.longitude;
     } catch (_) {
       // Catch exceptions to ensure UI layout stability if provider fails
     }
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF8F9FA),
       body: SingleChildScrollView(
         child: Column(
@@ -143,7 +153,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                _buildHeader(displayFullName, displayLocation),
+                _buildHeader(displayFullName, displayLocation, hasNewNotifications, latitude, longitude),
 
                 // Cards overlap the header boundary
                 Padding(
@@ -170,7 +180,13 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   // COMPONENT BUILDERS
   // ==========================================================================
 
-  Widget _buildHeader(String userName, String userLocation) {
+  Widget _buildHeader(
+    String userName,
+    String userLocation,
+    bool hasNewNotifications,
+    double? latitude,
+    double? longitude,
+  ) {
     return Container(
       height: 335,
       width: double.infinity,
@@ -216,26 +232,34 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
-                    Positioned(
-                      top: 2,
-                      right: 4,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE53935),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFD3410A), width: 2),
+              GestureDetector(
+                onTap: () {
+                  _scaffoldKey.currentState?.openEndDrawer();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
+                      if (hasNewNotifications)
+                        Positioned(
+                          top: 2,
+                          right: 4,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE53935),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFD3410A), width: 2),
+                            ),
+                          ),
+                        ),
                         ),
                       ),
                     ),
@@ -290,23 +314,58 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           const SizedBox(height: 20),
 
           // Dynamic location from profile — updates in real-time
-          Row(
-            children: [
-              const Icon(Icons.location_on_outlined, color: Colors.white, size: 20),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  userLocation,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+          InkWell(
+            onTap: () async {
+              final currentLatLng = (latitude != null && longitude != null)
+                  ? LatLng(latitude, longitude)
+                  : null;
+              final result = await Navigator.push<Map<String, dynamic>>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => JobLocationPickerScreen(
+                    initialLocation: currentLatLng,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
+              );
+
+              if (result != null) {
+                final lat = result['latitude'] as double?;
+                final lng = result['longitude'] as double?;
+                final address = result['address'] as String? ?? '';
+                if (address.isNotEmpty) {
+                  final approxLocation = getApproximateLocation(address);
+                  ref.read(authProvider.notifier).updateLocation(
+                    location: approxLocation,
+                    latitude: lat,
+                    longitude: lng,
+                  );
+                }
+              }
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on_outlined, color: Colors.white, size: 20),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      userLocation,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right, color: Colors.white70, size: 16),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),

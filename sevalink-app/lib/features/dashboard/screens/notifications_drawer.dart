@@ -1,14 +1,80 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../providers/notification_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/chat_provider.dart';
+import '../../../data/models/notification_model.dart';
 import '../../../core/themes/app_theme.dart';
 
 class NotificationsDrawer extends ConsumerWidget {
   const NotificationsDrawer({super.key});
 
-  void _handleNotificationTap(BuildContext context, WidgetRef ref, int notifId) {
-    ref.read(notificationProvider.notifier).markAsRead(notifId);
+  void _handleNotificationTap(BuildContext context, WidgetRef ref, NotificationModel notif) {
+    // 1. Mark as read on the backend & local state
+    ref.read(notificationProvider.notifier).markAsRead(notif.id);
+    
+    // 2. Close drawer
     Navigator.pop(context);
+
+    // 3. Determine navigation route
+    final isClient = ref.read(authProvider).user?.role == 'CLIENT';
+    final titleLower = notif.title.toLowerCase();
+
+    if (titleLower.contains('message') || titleLower.contains('msg')) {
+      // Chat message notification
+      final String partnerName = notif.title.replaceFirst(RegExp(r'New Message from ', caseSensitive: false), '').trim();
+      
+      // Let's read the conversations list to try to find partner ID
+      final conversationsAsync = ref.read(conversationsProvider);
+      int? partnerId;
+      if (conversationsAsync is AsyncData) {
+        final conversations = conversationsAsync.value;
+        if (conversations != null) {
+          for (final conv in conversations) {
+            if (conv.partnerName.trim().toLowerCase() == partnerName.toLowerCase()) {
+              partnerId = conv.partnerId;
+              break;
+            }
+          }
+        }
+      }
+
+      if (isClient) {
+        if (partnerId != null) {
+          context.push('/client/chat/$partnerId', extra: {'name': partnerName});
+        } else {
+          context.push('/client/chat');
+        }
+      } else {
+        if (partnerId != null) {
+          context.push('/worker/chat/$partnerId', extra: {'name': partnerName});
+        } else {
+          context.push('/worker/chat');
+        }
+      }
+    } else if (notif.relatedJobId != null) {
+      final jobId = notif.relatedJobId!;
+      if (isClient) {
+        if (titleLower.contains('quote') && titleLower.contains('received')) {
+          // Quote received -> quotes section
+          context.push('/client/jobs/$jobId/quotes', extra: <String, dynamic>{});
+        } else {
+          // Job milestone -> job timeline
+          context.push('/client/jobs/$jobId/timeline');
+        }
+      } else {
+        // Worker navigates to job timeline
+        context.push('/worker/jobs/$jobId/timeline');
+      }
+    } else {
+      // Fallback: navigate to home
+      if (isClient) {
+        context.go('/client/home');
+      } else {
+        context.go('/worker/home');
+      }
+    }
   }
 
   @override
@@ -25,7 +91,7 @@ class NotificationsDrawer extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -37,22 +103,44 @@ class NotificationsDrawer extends ConsumerWidget {
                       color: colors.textPrimary,
                     ),
                   ),
-                  if (notificationState.unreadCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${notificationState.unreadCount} New',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (notifications.isNotEmpty) ...[
+                        IconButton(
+                          icon: Icon(Icons.done_all, color: colors.textSecondary, size: 22),
+                          tooltip: 'Mark all as read',
+                          onPressed: () {
+                            ref.read(notificationProvider.notifier).markAllAsRead();
+                          },
                         ),
-                      ),
-                    ),
+                        IconButton(
+                          icon: Icon(Icons.delete_sweep_outlined, color: colors.textSecondary, size: 22),
+                          tooltip: 'Clear all',
+                          onPressed: () {
+                            ref.read(notificationProvider.notifier).clearAll();
+                          },
+                        ),
+                      ],
+                      if (notificationState.unreadCount > 0)
+                        Container(
+                          margin: const EdgeInsets.only(left: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${notificationState.unreadCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -78,7 +166,7 @@ class NotificationsDrawer extends ConsumerWidget {
                           itemBuilder: (context, index) {
                             final notif = notifications[index];
                             return InkWell(
-                              onTap: () => _handleNotificationTap(context, ref, notif.id),
+                              onTap: () => _handleNotificationTap(context, ref, notif),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                                 decoration: BoxDecoration(

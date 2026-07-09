@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/router.dart';
 import 'core/themes/app_theme.dart';
 import 'providers/theme_provider.dart';
+import 'services/local_notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalNotificationService.initialize();
   runApp(const ProviderScope(child: SevaLinkApp()));
 }
 

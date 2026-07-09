@@ -5,6 +5,7 @@ import 'auth_provider.dart';
 import 'worker_feed_provider.dart';
 import 'worker_jobs_list_provider.dart';
 import 'client_jobs_provider.dart';
+import '../services/local_notification_service.dart';
 
 class NotificationState {
   final List<NotificationModel> notifications;
@@ -32,14 +33,15 @@ class NotificationState {
 
 class NotificationNotifier extends Notifier<NotificationState> {
   Timer? _timer;
+  int? _lastNotificationId;
 
   @override
   NotificationState build() {
     // Schedule the initial fetch after the provider is initialized
     Future.microtask(() => fetchNotifications());
     
-    // Poll every 15 seconds so denied/accepted quotes update quickly
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) {
+    // Poll every 8 seconds so denied/accepted quotes update quickly
+    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
       fetchNotifications();
     });
 
@@ -67,6 +69,26 @@ class NotificationNotifier extends Notifier<NotificationState> {
       final int unreadCount = data['unreadCount'];
 
       final prevCount = state.notifications.length;
+
+      // Show local push notifications for any new items
+      if (notifications.isNotEmpty) {
+        final maxId = notifications.map((n) => n.id).reduce((a, b) => a > b ? a : b);
+        
+        if (_lastNotificationId != null) {
+          // Trigger push notifications for any notification with id > _lastNotificationId
+          for (final notif in notifications) {
+            if (notif.id > _lastNotificationId!) {
+              await LocalNotificationService.showNotification(
+                id: notif.id,
+                title: notif.title,
+                body: notif.message,
+              );
+            }
+          }
+        }
+        
+        _lastNotificationId = maxId;
+      }
 
       state = state.copyWith(
         notifications: notifications,
@@ -173,7 +195,7 @@ class NotificationNotifier extends Notifier<NotificationState> {
         unreadCount: 0,
       );
     } catch (e) {
-      // Revert or show error
+      // Handle error
     }
   }
 
@@ -189,11 +211,11 @@ class NotificationNotifier extends Notifier<NotificationState> {
       }
       
       state = state.copyWith(
-        notifications: [],
+        notifications: const [],
         unreadCount: 0,
       );
     } catch (e) {
-      // Revert or show error
+      // Handle error
     }
   }
 }
