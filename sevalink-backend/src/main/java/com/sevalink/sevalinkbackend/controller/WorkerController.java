@@ -35,7 +35,9 @@ public class WorkerController {
             return ResponseEntity.ok(Map.of(
                 "id", worker.getId(),
                 "userId", worker.getUser().getId(),
-                "isAvailable", worker.getIsAvailable() != null && worker.getIsAvailable()
+                "isAvailable", worker.getIsAvailable() != null && worker.getIsAvailable(),
+                "status", worker.getStatus() != null ? worker.getStatus().name() : "PENDING",
+                "rejectionReason", worker.getRejectionReason() != null ? worker.getRejectionReason() : ""
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -70,6 +72,37 @@ public class WorkerController {
             return ResponseEntity.ok(ApiResponse.success("Worker status updated", updated));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Invalid status value"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // Verify worker physically
+    // PUT http://localhost:8080/api/workers/{id}/verify
+    @PutMapping("/{id}/verify")
+    public ResponseEntity<ApiResponse<AdminWorkerDto>> verifyWorker(
+            @PathVariable Long id,
+            @RequestParam("nicNumber") String nicNumber,
+            @RequestParam("verificationDocument") MultipartFile verificationDocument,
+            @RequestParam("policeReport") MultipartFile policeReport) {
+        try {
+            AdminWorkerDto updated = workerService.verifyWorker(id, nicNumber, verificationDocument, policeReport);
+            return ResponseEntity.ok(ApiResponse.success("Worker verified successfully", updated));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // Reject worker physically
+    // PUT http://localhost:8080/api/workers/{id}/reject
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<ApiResponse<AdminWorkerDto>> rejectWorker(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        try {
+            String reason = payload.getOrDefault("rejectionReason", "Verification details incorrect");
+            AdminWorkerDto updated = workerService.rejectWorker(id, reason);
+            return ResponseEntity.ok(ApiResponse.success("Worker verification rejected", updated));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

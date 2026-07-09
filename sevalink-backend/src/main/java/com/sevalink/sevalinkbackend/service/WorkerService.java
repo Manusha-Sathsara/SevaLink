@@ -74,13 +74,64 @@ public class WorkerService {
                 .hourlyRate(worker.getHourlyRate())
                 .isAvailable(worker.getIsAvailable())
                 .createdAt(worker.getUser() != null ? worker.getUser().getCreatedAt() : null)
+                .nicNumber(worker.getNicNumber())
+                .verificationDocumentUrl(worker.getVerificationDocumentUrl())
+                .policeReportUrl(worker.getPoliceReportUrl())
+                .rejectionReason(worker.getRejectionReason())
                 .build();
+    }
+
+    @Transactional
+    public AdminWorkerDto verifyWorker(Long workerId, String nicNumber, MultipartFile verificationDoc, MultipartFile policeReport) {
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new RuntimeException("Worker not found"));
+
+        String verificationDocName = fileStorageService.storeFile(verificationDoc);
+        String policeReportName = fileStorageService.storeFile(policeReport);
+
+        String verDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/api/public/uploads/")
+                .path(verificationDocName)
+                .toUriString();
+
+        String prDownloadUri = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/api/public/uploads/")
+                .path(policeReportName)
+                .toUriString();
+
+        worker.setNicNumber(nicNumber);
+        worker.setVerificationDocumentUrl(verDownloadUri);
+        worker.setPoliceReportUrl(prDownloadUri);
+        worker.setStatus(WorkerStatus.VERIFIED);
+        worker.setRejectionReason(null); // Clear rejection reason upon successful verification
+
+        return toAdminWorkerDto(workerRepository.save(worker));
+    }
+
+    @Transactional
+    public AdminWorkerDto rejectWorker(Long workerId, String rejectionReason) {
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new RuntimeException("Worker not found"));
+
+        worker.setStatus(WorkerStatus.REJECTED);
+        worker.setRejectionReason(rejectionReason);
+        worker.setNicNumber(null);
+        worker.setVerificationDocumentUrl(null);
+        worker.setPoliceReportUrl(null);
+
+        return toAdminWorkerDto(workerRepository.save(worker));
     }
 
     public AdminWorkerDto updateWorkerStatus(Long workerId, WorkerStatus status) {
         Worker worker = workerRepository.findById(workerId)
                 .orElseThrow(() -> new RuntimeException("Worker not found"));
         worker.setStatus(status);
+        if (status == WorkerStatus.PENDING) {
+            worker.setNicNumber(null);
+            worker.setVerificationDocumentUrl(null);
+            worker.setPoliceReportUrl(null);
+            worker.setRejectionReason(null);
+        }
         return toAdminWorkerDto(workerRepository.save(worker));
     }
 
@@ -114,7 +165,7 @@ public class WorkerService {
 
     // Get only available workers
     public List<Worker> getAvailableWorkers() {
-        return workerRepository.findByIsAvailableTrue();
+        return workerRepository.findByIsAvailableTrueAndStatus(WorkerStatus.VERIFIED);
     }
 
     // Update worker availability

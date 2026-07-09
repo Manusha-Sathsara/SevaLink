@@ -71,12 +71,23 @@ class _SendQuoteScreenState extends ConsumerState<SendQuoteScreen>
 
       if (user == null) throw Exception('Not logged in');
 
-      // Get this worker's own worker-profile ID directly via JWT (no list search needed)
       int workerId = 0;
       try {
         final meRes = await dioClient.dio.get('/workers/me');
+        final status = meRes.data['status']?.toString().toUpperCase() ?? 'PENDING';
+        if (status != 'VERIFIED') {
+          final reason = meRes.data['rejectionReason']?.toString() ?? '';
+          if (status == 'REJECTED') {
+            throw Exception('Cannot send quotes. Your worker account has been REJECTED by physical verification. Reason: $reason');
+          } else {
+            throw Exception('Cannot send quotes. Your worker account is PENDING physical verification.');
+          }
+        }
         workerId = (meRes.data['id'] as num?)?.toInt() ?? 0;
       } catch (e) {
+        if (e is Exception && e.toString().contains('Cannot send quotes')) {
+          rethrow;
+        }
         throw Exception('Worker profile not found. Please complete your profile first.');
       }
 

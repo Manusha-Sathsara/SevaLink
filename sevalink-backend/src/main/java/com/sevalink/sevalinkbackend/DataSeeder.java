@@ -184,6 +184,15 @@ public class DataSeeder implements CommandLineRunner {
         worker.setTotalJobs(totalJobs);
         worker.setStatus(status);
         worker.setIsAvailable(true);
+
+        if (status == WorkerStatus.VERIFIED) {
+            worker.setNicNumber("199405060708");
+            worker.setVerificationDocumentUrl("http://localhost:8080/api/public/uploads/sample-nic.pdf");
+            worker.setPoliceReportUrl("http://localhost:8080/api/public/uploads/sample-police-report.pdf");
+        } else if (status == WorkerStatus.REJECTED) {
+            worker.setRejectionReason("Police report check failed: record mismatch.");
+        }
+
         workerRepository.save(worker);
     }
 }

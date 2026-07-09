@@ -120,7 +120,7 @@ public class SearchService {
 
     // Availability filter
     public List<Worker> searchByAvailability(Boolean available) {
-        return searchRepository.findByIsAvailableOrderByRatingDesc(available);
+        return searchRepository.findByIsAvailableAndStatusOrderByRatingDesc(available, com.sevalink.sevalinkbackend.model.WorkerStatus.VERIFIED);
     }
 
     // Location based search

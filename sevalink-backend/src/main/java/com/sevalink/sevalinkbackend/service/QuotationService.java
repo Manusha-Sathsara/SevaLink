@@ -45,6 +45,10 @@ public class QuotationService {
             throw new RuntimeException("Cannot send a quotation. This job is no longer open.");
         }
 
+        if (worker.getStatus() != com.sevalink.sevalinkbackend.model.WorkerStatus.VERIFIED) {
+            throw new RuntimeException("Cannot send a quotation. Your worker account must be VERIFIED first.");
+        }
+
         quotationRepository.findByJobPostIdAndWorkerId(
                 jobPost.getId(),
                 worker.getId())

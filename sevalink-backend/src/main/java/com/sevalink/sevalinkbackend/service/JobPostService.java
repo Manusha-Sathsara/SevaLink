@@ -23,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import com.sevalink.sevalinkbackend.model.WorkerStatus;
 
 @Service
 public class JobPostService {
@@ -266,6 +269,27 @@ public class JobPostService {
 
     // Update job timeline
     public JobTimeline updateTimeline(Long jobId, String status, String note) {
+        // Enforce that if the current authenticated caller is a worker, they must be VERIFIED
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+                String email = auth.getName();
+                userRepository.findByEmail(email).ifPresent(user -> {
+                    if (com.sevalink.sevalinkbackend.model.UserRole.WORKER.equals(user.getRole())) {
+                        Worker worker = workerRepository.findByUserId(user.getId())
+                                .orElseThrow(() -> new RuntimeException("Worker profile not found"));
+                        if (worker.getStatus() != WorkerStatus.VERIFIED) {
+                            throw new RuntimeException("Cannot perform action. Your worker account is not VERIFIED.");
+                        }
+                    }
+                });
+            }
+        } catch (RuntimeException re) {
+            throw re;
+        } catch (Exception e) {
+            // Ignore auth parser abnormalities
+        }
+
         JobPost job = jobPostRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found"));
         if ("COMPLETED".equals(status)) {

@@ -153,6 +153,37 @@ export async function updateWorkerStatus(workerId, status) {
   return body.data;
 }
 
+export async function verifyWorker(workerId, nicNumber, verificationDocFile, policeReportFile) {
+  const formData = new FormData();
+  formData.append('nicNumber', nicNumber);
+  formData.append('verificationDocument', verificationDocFile);
+  formData.append('policeReport', policeReportFile);
+
+  const res = await fetch(`${BASE}/api/workers/${workerId}/verify`, {
+    method: 'PUT',
+    headers: { ...authHeaders() },
+    body: formData
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body?.success === false) {
+    throw new Error(body?.message || 'Failed to verify worker');
+  }
+  return body.data;
+}
+
+export async function rejectWorker(workerId, rejectionReason) {
+  const res = await fetch(`${BASE}/api/workers/${workerId}/reject`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ rejectionReason })
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body?.success === false) {
+    throw new Error(body?.message || 'Failed to reject worker');
+  }
+  return body.data;
+}
+
 export async function getAllJobs() {
   const res = await fetch(`${BASE}/api/jobs/admin`, {
     headers: { ...authHeaders() }
@@ -232,4 +263,4 @@ export function logout() {
   localStorage.removeItem('refreshToken');
 }
 
-export default { login, forgotPassword, resetPassword, getCurrentUser, getAdminDashboardStats, updateProfile, logout };
+export default { login, forgotPassword, resetPassword, getCurrentUser, getAdminDashboardStats, updateProfile, logout, verifyWorker, rejectWorker };

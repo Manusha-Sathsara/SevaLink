@@ -52,6 +52,18 @@ public class Worker {
     @Column(name = "is_available")
     private Boolean isAvailable = true;
 
+    @Column(name = "nic_number")
+    private String nicNumber;
+
+    @Column(name = "verification_document_url")
+    private String verificationDocumentUrl;
+
+    @Column(name = "police_report_url")
+    private String policeReportUrl;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
     private Double latitude;
     private Double longitude;
 }

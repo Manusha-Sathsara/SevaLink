@@ -20,4 +20,8 @@ public class AdminWorkerDto {
     private Double hourlyRate;
     private Boolean isAvailable;
     private LocalDateTime createdAt;
+    private String nicNumber;
+    private String verificationDocumentUrl;
+    private String policeReportUrl;
+    private String rejectionReason;
 }

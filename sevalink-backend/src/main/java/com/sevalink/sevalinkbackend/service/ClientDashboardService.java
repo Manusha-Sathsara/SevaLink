@@ -7,6 +7,8 @@ import com.sevalink.sevalinkbackend.repository.WorkerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.sevalink.sevalinkbackend.model.WorkerStatus;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,7 +19,7 @@ public class ClientDashboardService {
     private WorkerRepository workerRepository;
 
     public ClientDashboardResponse getDashboardData() {
-        List<Worker> topWorkers = workerRepository.findTop10ByIsAvailableTrueOrderByRatingDesc();
+        List<Worker> topWorkers = workerRepository.findTop10ByIsAvailableTrueAndStatusOrderByRatingDesc(WorkerStatus.VERIFIED);
 
         List<WorkerProfileDto> workerDtos = topWorkers.stream().map(worker -> {
             String name = (worker.getUser() != null && worker.getUser().getFullName() != null) 

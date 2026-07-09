@@ -24,25 +24,25 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
     // Count workers by verification status
     long countByStatus(WorkerStatus status);
 
-    // Find available workers only
-    List<Worker> findByIsAvailableTrue();
+    // Find available verified workers only
+    List<Worker> findByIsAvailableTrueAndStatus(WorkerStatus status);
 
-    // Search by category and availability
-    List<Worker> findByCategoryNameContainingIgnoreCaseAndIsAvailableTrue(String categoryName);
+    // Search by category and availability and status
+    List<Worker> findByCategoryNameContainingIgnoreCaseAndIsAvailableTrueAndStatus(String categoryName, WorkerStatus status);
 
-    // Custom search query
+    // Custom search query for verified workers
     @Query("SELECT w FROM Worker w WHERE " +
             "LOWER(w.category.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-            "AND w.isAvailable = true " +
+            "AND w.isAvailable = true AND w.status = 'VERIFIED' " +
             "ORDER BY w.rating DESC")
     List<Worker> searchWorkers(@Param("keyword") String keyword);
 
-    // Get Top Rated Workers for Dashboard
-    List<Worker> findTop10ByIsAvailableTrueOrderByRatingDesc();
+    // Get Top Rated Verified Workers for Dashboard
+    List<Worker> findTop10ByIsAvailableTrueAndStatusOrderByRatingDesc(WorkerStatus status);
 
-    // Find nearby available workers
+    // Find nearby available verified workers
     @Query("SELECT w FROM Worker w WHERE " +
-            "w.isAvailable = true AND " +
+            "w.isAvailable = true AND w.status = 'VERIFIED' AND " +
             "w.latitude IS NOT NULL AND w.longitude IS NOT NULL AND " +
             "(6371 * acos(cos(radians(:lat)) * cos(radians(w.latitude)) * " +
             "cos(radians(w.longitude) - radians(:lng)) + " +
@@ -52,9 +52,9 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
             @Param("lng") Double lng,
             @Param("radiusKm") Double radiusKm);
 
-    // Find nearby available workers whose category matches the job's category
+    // Find nearby available verified workers whose category matches the job's category
     @Query("SELECT w FROM Worker w WHERE " +
-            "w.isAvailable = true AND " +
+            "w.isAvailable = true AND w.status = 'VERIFIED' AND " +
             "w.category.id = :categoryId AND " +
             "w.latitude IS NOT NULL AND w.longitude IS NOT NULL AND " +
             "(6371 * acos(cos(radians(:lat)) * cos(radians(w.latitude)) * " +
