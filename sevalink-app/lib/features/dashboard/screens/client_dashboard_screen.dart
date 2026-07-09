@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/notification_provider.dart';
 import 'search_screen.dart';
 import 'notifications_drawer.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -144,9 +145,13 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
       // Catch exceptions to ensure UI layout stability if provider fails
     }
 
+    final notificationState = ref.watch(notificationProvider);
+    final hasNewNotifications = notificationState.unreadCount > 0;
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: const Color(0xFFF8F9FA),
+      endDrawer: const NotificationsDrawer(),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -260,10 +265,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                             ),
                           ),
                         ),
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
