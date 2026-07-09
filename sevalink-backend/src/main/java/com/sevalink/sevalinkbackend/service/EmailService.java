@@ -22,7 +22,10 @@ public class EmailService {
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
 
-    public void sendPasswordResetEmail(String to, String resetToken) {
+    @Value("${app.email.fail-open:true}")
+    private boolean emailFailOpen;
+
+    public boolean sendPasswordResetEmail(String to, String resetToken) {
         // Always log for development
         logger.info("========================================");
         logger.info("🔐 PASSWORD RESET REQUEST");
@@ -34,29 +37,41 @@ public class EmailService {
         logger.info("Reset PIN: {}", resetToken);
         logger.info("========================================");
 
-        // Only send email if configured
-        if (emailEnabled && mailSender != null && !fromEmail.isEmpty()) {
-            try {
-                SimpleMailMessage message = new SimpleMailMessage();
-                message.setTo(to);
-                message.setSubject("SevaLink - Your Password Reset PIN code");
-                message.setText(buildEmailBody(resetToken));
-                message.setFrom(fromEmail);
-                message.setReplyTo(fromEmail);
-
-                logger.info("Attempting to send email...");
-                mailSender.send(message);
-                logger.info("✅ Email sent successfully to: {}", to);
-            } catch (Exception e) {
-                logger.error("❌ Failed to send email: {}", e.getMessage());
-                e.printStackTrace(); // Print full stack trace
-            }
-        } else {
-            logger.warn("⚠️ Email not sent - Check configuration:");
-            if (!emailEnabled) logger.warn("  - Email disabled (app.email.enabled=false)");
-            if (mailSender == null) logger.warn("  - MailSender bean not available");
-            if (fromEmail.isEmpty()) logger.warn("  - From email not configured");
+        if (!emailEnabled || mailSender == null || fromEmail.isEmpty()) {
+            StringBuilder reason = new StringBuilder("Email cannot be sent. ");
+            if (!emailEnabled) reason.append("Email is disabled (app.email.enabled=false). ");
+            if (mailSender == null) reason.append("MailSender bean unavailable. ");
+            if (fromEmail.isEmpty()) reason.append("From email is not configured. ");
+            logger.warn("⚠️ Email not sent - Check configuration: {}", reason.toString());
+            return handleEmailFailure(reason.toString());
         }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject("SevaLink - Your Password Reset PIN code");
+            message.setText(buildEmailBody(resetToken));
+            message.setFrom(fromEmail);
+            message.setReplyTo(fromEmail);
+
+            logger.info("Attempting to send email...");
+            mailSender.send(message);
+            logger.info("✅ Email sent successfully to: {}", to);
+            return true;
+        } catch (Exception e) {
+            logger.error("❌ Failed to send email: {}", e.getMessage());
+            logger.warn("⚠️ Password reset PIN remains valid and is logged above for development.");
+            return handleEmailFailure("Unable to deliver password reset email: " + e.getMessage());
+        }
+    }
+
+    private boolean handleEmailFailure(String reason) {
+        if (emailFailOpen) {
+            logger.warn("⚠️ Email delivery failed but fail-open is enabled. Reset PIN is available in logs.");
+            logger.warn(reason);
+            return false;
+        }
+        throw new IllegalStateException(reason);
     }
 
     private String buildEmailBody(String resetToken) {

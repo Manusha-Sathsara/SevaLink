@@ -128,6 +128,27 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("User found", user));
     }
 
+    /**
+     * UPDATE CURRENT USER PROFILE
+     * PUT /api/auth/me
+     */
+    @PutMapping("/me")
+    public ResponseEntity<ApiResponse<UserDTO>> updateCurrentUser(
+            @RequestBody UpdateProfileRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()
+                    || "anonymousUser".equals(authentication.getPrincipal())) {
+                return ResponseEntity.status(401).body(ApiResponse.error("Unauthorized"));
+            }
+            String email = authentication.getName();
+            UserDTO updated = authService.updateProfile(email, request);
+            return ResponseEntity.ok(ApiResponse.success("Profile updated", updated));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     private String extractBearerToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ") || authHeader.length() <= 7) {
             throw new RuntimeException("Invalid Authorization header");

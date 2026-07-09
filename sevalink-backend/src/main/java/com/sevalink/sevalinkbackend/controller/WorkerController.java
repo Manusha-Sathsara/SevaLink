@@ -1,9 +1,11 @@
 package com.sevalink.sevalinkbackend.controller;
 
-import com.sevalink.sevalinkbackend.model.Worker;
-import com.sevalink.sevalinkbackend.service.WorkerService;
+import com.sevalink.sevalinkbackend.dto.AdminWorkerDto;
 import com.sevalink.sevalinkbackend.dto.UpdateWorkerProfileRequest;
 import com.sevalink.sevalinkbackend.dto.ApiResponse;
+import com.sevalink.sevalinkbackend.model.Worker;
+import com.sevalink.sevalinkbackend.model.WorkerStatus;
+import com.sevalink.sevalinkbackend.service.WorkerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -45,6 +47,32 @@ public class WorkerController {
     @GetMapping
     public List<Worker> getAllWorkers() {
         return workerService.getAllWorkers();
+    }
+
+    // Get all workers for admin verification
+    // GET http://localhost:8080/api/workers/admin
+    @GetMapping("/admin")
+    public ResponseEntity<ApiResponse<List<AdminWorkerDto>>> getAdminWorkers() {
+        List<AdminWorkerDto> workers = workerService.getAllWorkerDtos();
+        return ResponseEntity.ok(ApiResponse.success("Worker list loaded", workers));
+    }
+
+    // Update worker verification status
+    // PUT http://localhost:8080/api/workers/{id}/status
+    @PutMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<AdminWorkerDto>> updateWorkerStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload) {
+        try {
+            String statusValue = payload.get("status");
+            WorkerStatus status = WorkerStatus.valueOf(statusValue.toUpperCase());
+            AdminWorkerDto updated = workerService.updateWorkerStatus(id, status);
+            return ResponseEntity.ok(ApiResponse.success("Worker status updated", updated));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Invalid status value"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     // Search workers by keyword

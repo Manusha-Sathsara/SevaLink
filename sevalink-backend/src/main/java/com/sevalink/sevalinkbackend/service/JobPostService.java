@@ -103,6 +103,40 @@ public class JobPostService {
         return jobPostRepository.findByStatusOrderByCreatedAtDesc("OPEN");
     }
 
+    // Admin view: get all jobs regardless of status
+    public List<JobPost> getAllJobsAdmin() {
+        return jobPostRepository.findAll();
+    }
+
+    // Update a job record for admin management
+    @Transactional
+    public JobPost updateJob(Long jobId, JobPost payload) {
+        JobPost job = jobPostRepository.findById(jobId)
+                .orElseThrow(() -> new RuntimeException("Job not found"));
+        if (payload.getTitle() != null) {
+            job.setTitle(payload.getTitle());
+        }
+        if (payload.getDescription() != null) {
+            job.setDescription(payload.getDescription());
+        }
+        if (payload.getLocationName() != null) {
+            job.setLocationName(payload.getLocationName());
+        }
+        if (payload.getBudgetMin() != null) {
+            job.setBudgetMin(payload.getBudgetMin());
+        }
+        if (payload.getBudgetMax() != null) {
+            job.setBudgetMax(payload.getBudgetMax());
+        }
+        if (payload.getUrgency() != null) {
+            job.setUrgency(payload.getUrgency());
+        }
+        if (payload.getStatus() != null) {
+            job.setStatus(payload.getStatus());
+        }
+        return jobPostRepository.save(job);
+    }
+
     // Get all open jobs excluding those the worker already quoted
     public List<JobPost> getAllOpenJobsForWorker(Long workerId) {
         return jobPostRepository.findOpenJobsExcludingWorkerQuotes(workerId);

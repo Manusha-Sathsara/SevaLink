@@ -1,10 +1,12 @@
 package com.sevalink.sevalinkbackend.service;
 
-import com.sevalink.sevalinkbackend.model.Worker;
-import com.sevalink.sevalinkbackend.model.Category;
-import com.sevalink.sevalinkbackend.repository.WorkerRepository;
-import com.sevalink.sevalinkbackend.repository.CategoryRepository;
+import com.sevalink.sevalinkbackend.dto.AdminWorkerDto;
 import com.sevalink.sevalinkbackend.dto.UpdateWorkerProfileRequest;
+import com.sevalink.sevalinkbackend.model.Category;
+import com.sevalink.sevalinkbackend.model.Worker;
+import com.sevalink.sevalinkbackend.model.WorkerStatus;
+import com.sevalink.sevalinkbackend.repository.CategoryRepository;
+import com.sevalink.sevalinkbackend.repository.WorkerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class WorkerService {
@@ -43,11 +46,42 @@ public class WorkerService {
                     newWorker.setRating(5.0);
                     newWorker.setTotalJobs(0);
                     newWorker.setSkills("Electrician,AC Repair,Wiring");
+                    newWorker.setStatus(WorkerStatus.PENDING);
                     workerRepository.save(newWorker);
                 }
             }
         }
         return workerRepository.findAll();
+    }
+
+    public List<AdminWorkerDto> getAllWorkerDtos() {
+        return getAllWorkers().stream()
+                .map(this::toAdminWorkerDto)
+                .collect(Collectors.toList());
+    }
+
+    private AdminWorkerDto toAdminWorkerDto(Worker worker) {
+        return AdminWorkerDto.builder()
+                .id(worker.getId())
+                .fullName(worker.getUser() != null ? worker.getUser().getFullName() : "Unknown")
+                .email(worker.getUser() != null ? worker.getUser().getEmail() : null)
+                .phoneNumber(worker.getUser() != null ? worker.getUser().getPhoneNumber() : null)
+                .category(worker.getCategory() != null ? worker.getCategory().getName() : "Uncategorized")
+                .skills(worker.getSkills())
+                .status(worker.getStatus() != null ? worker.getStatus().name() : WorkerStatus.PENDING.name())
+                .rating(worker.getRating())
+                .totalJobs(worker.getTotalJobs())
+                .hourlyRate(worker.getHourlyRate())
+                .isAvailable(worker.getIsAvailable())
+                .createdAt(worker.getUser() != null ? worker.getUser().getCreatedAt() : null)
+                .build();
+    }
+
+    public AdminWorkerDto updateWorkerStatus(Long workerId, WorkerStatus status) {
+        Worker worker = workerRepository.findById(workerId)
+                .orElseThrow(() -> new RuntimeException("Worker not found"));
+        worker.setStatus(status);
+        return toAdminWorkerDto(workerRepository.save(worker));
     }
 
     // Get worker by ID
@@ -67,6 +101,7 @@ public class WorkerService {
             newWorker.setIsAvailable(true);
             newWorker.setRating(5.0);
             newWorker.setTotalJobs(0);
+            newWorker.setStatus(WorkerStatus.PENDING);
             workerRepository.save(newWorker);
             return newWorker;
         });

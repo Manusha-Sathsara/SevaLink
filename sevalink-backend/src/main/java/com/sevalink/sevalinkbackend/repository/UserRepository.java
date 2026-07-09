@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -32,4 +33,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Count users by role (for admin dashboard analytics)
     long countByRole(UserRole role);
+
+    // Count currently active users who have logged in within the last 10 minutes
+    long countByIsActiveTrueAndLastLoginAfter(LocalDateTime lastLogin);
 }

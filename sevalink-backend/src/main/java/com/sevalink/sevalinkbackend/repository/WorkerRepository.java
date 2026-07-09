@@ -1,6 +1,7 @@
 package com.sevalink.sevalinkbackend.repository;
 
 import com.sevalink.sevalinkbackend.model.Worker;
+import com.sevalink.sevalinkbackend.model.WorkerStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +17,12 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
 
     // Search workers by category name
     List<Worker> findByCategoryNameContainingIgnoreCase(String categoryName);
+
+    // Find workers by verification status
+    List<Worker> findByStatus(WorkerStatus status);
+
+    // Count workers by verification status
+    long countByStatus(WorkerStatus status);
 
     // Find available workers only
     List<Worker> findByIsAvailableTrue();

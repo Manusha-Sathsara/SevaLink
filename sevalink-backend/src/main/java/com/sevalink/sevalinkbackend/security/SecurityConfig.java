@@ -43,13 +43,8 @@ public class SecurityConfig {
 
                         // Public endpoints (no authentication needed)
                         .requestMatchers(
-                                    "/api/auth/**"
-//                                "/api/auth/register",
-//                                "/api/auth/login",
-//                                "/api/auth/forgot-password",
-//                                "/api/auth/reset-password",
-//                                "/api/auth/refresh",
-//                                "/api/auth/me"
+                                    "/api/auth/**",
+                                    "/error"
                                 ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
 

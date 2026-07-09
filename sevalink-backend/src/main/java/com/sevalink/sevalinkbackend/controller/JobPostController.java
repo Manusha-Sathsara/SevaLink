@@ -38,6 +38,37 @@ public class JobPostController {
         return jobPostService.getAllOpenJobs();
     }
 
+    // Admin sees all jobs regardless of status
+    // GET http://localhost:8080/api/jobs/admin
+    @GetMapping("/admin")
+    public List<JobPost> getAllJobsAdmin() {
+        return jobPostService.getAllJobsAdmin();
+    }
+
+    // Update a job for admin management
+    // PUT http://localhost:8080/api/jobs/{id}
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateJob(@PathVariable Long id, @RequestBody JobPost jobPost) {
+        try {
+            JobPost updated = jobPostService.updateJob(id, jobPost);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // Delete a job for admin management
+    // DELETE http://localhost:8080/api/jobs/{id}
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteJob(@PathVariable Long id) {
+        try {
+            jobPostService.deleteJob(id);
+            return ResponseEntity.ok(ApiResponse.success("Job deleted", null));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     // Worker feed — alias for getAllOpenJobs (used by worker app UI)
     // GET http://localhost:8080/api/jobs/feed
     @GetMapping("/feed")

@@ -30,6 +30,28 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // PUT http://localhost:8080/api/users/1
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody User payload) {
+        try {
+            User updated = userService.updateUser(id, payload);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // DELETE (soft block) http://localhost:8080/api/users/1
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> blockUser(@PathVariable Long id) {
+        try {
+            userService.blockUser(id);
+            return ResponseEntity.ok(ApiResponse.success("User blocked", null));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     // POST http://localhost:8080/api/users/register
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
