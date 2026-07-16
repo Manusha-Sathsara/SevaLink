@@ -1,34 +1,76 @@
 package com.sevalink.sevalinkbackend.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDateTime;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import java.time.*;
 
-@Data
 @Entity
 @Table(name = "users")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
 
     @Column(nullable = false)
-    private String name;
-
+    private String fullName;
     @Column(unique = true, nullable = false)
     private String email;
 
-    @JsonIgnore
-    @Column(nullable = false)
-    private String password;
-
-    private String phone;
+    @Column(nullable = false, unique = true)
+    private String phoneNumber;
 
     @Column(nullable = false)
-    private String role; // "CLIENT" or "WORKER"
+    private String passwordHash;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
+
+    @Column(nullable = false)
+    private LocalDate birthday;
+
+    @Column(nullable = false)
+    private Boolean isPhoneVerified = false;
+
+    @Column(nullable = false)
+    private Boolean isEmailVerified = false;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    private String profileImageUrl;
+    private String location;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    private String resetPasswordToken;
+    private LocalDateTime resetPasswordTokenExpiry;
+    private LocalDateTime resetPasswordLastSentAt;
+
+
+    private LocalDateTime lastLogin;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+
+
+
 }

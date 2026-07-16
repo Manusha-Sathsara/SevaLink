@@ -64,4 +64,18 @@ public class QuotationController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    // Get contact details after acceptance (phone reveal)
+    // GET http://localhost:8080/api/quotations/{id}/contact
+    @GetMapping("/{id}/contact")
+    public ResponseEntity<?> getContactDetails(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(quotationService.getContactDetails(id));
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("only available after acceptance")) {
+                return ResponseEntity.status(403).body(e.getMessage());
+            }
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

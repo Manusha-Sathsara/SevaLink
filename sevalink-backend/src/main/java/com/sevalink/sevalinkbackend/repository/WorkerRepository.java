@@ -25,4 +25,19 @@ public interface WorkerRepository extends JpaRepository<Worker, Long> {
             "AND w.isAvailable = true " +
             "ORDER BY w.rating DESC")
     List<Worker> searchWorkers(@Param("keyword") String keyword);
+
+    // Get Top Rated Workers for Dashboard
+    List<Worker> findTop10ByIsAvailableTrueOrderByRatingDesc();
+
+    // Find nearby available workers
+    @Query("SELECT w FROM Worker w WHERE " +
+            "w.isAvailable = true AND " +
+            "w.latitude IS NOT NULL AND w.longitude IS NOT NULL AND " +
+            "(6371 * acos(cos(radians(:lat)) * cos(radians(w.latitude)) * " +
+            "cos(radians(w.longitude) - radians(:lng)) + " +
+            "sin(radians(:lat)) * sin(radians(w.latitude)))) < :radiusKm")
+    List<Worker> findNearbyWorkers(
+            @Param("lat") Double lat,
+            @Param("lng") Double lng,
+            @Param("radiusKm") Double radiusKm);
 }

@@ -11,7 +11,7 @@ interface TestUser {
   createdDate?: string;
 }
 
-const API_URL = "http://localhost:8080/api/test-users";
+const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:8080/api"}/test-users`;
 
 export default function TestUserCRUD() {
   const [users, setUsers] = useState<TestUser[]>([]);

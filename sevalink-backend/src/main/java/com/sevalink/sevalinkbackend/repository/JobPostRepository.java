@@ -37,4 +37,8 @@ public interface JobPostRepository extends JpaRepository<JobPost, Long> {
             @Param("lng") Double lng,
             @Param("radiusKm") Double radiusKm,
             @Param("categoryId") Long categoryId);
+
+    long countByClientId(Long clientId);
+    long countByClientIdAndStatus(Long clientId, String status);
+    List<JobPost> findByClientIdAndStatusInOrderByCreatedAtDesc(Long clientId, List<String> statuses);
 }
