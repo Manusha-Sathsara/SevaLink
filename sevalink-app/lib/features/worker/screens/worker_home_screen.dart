@@ -16,7 +16,6 @@ import '../../jobs/screens/job_location_picker_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/utils/location_helper.dart';
 
-// (Mock data removed — now using real backend feed)
 
 //  Worker Home Screen
 class WorkerHomeScreen extends ConsumerStatefulWidget {
@@ -86,7 +85,7 @@ class _WorkerHomeScreenState extends ConsumerState<WorkerHomeScreen> {
   }
 }
 
-// ─── Home Content (connected to real backend) ─────────────────────────────────
+//  Home Content (connected to real backend) 
 class _HomeContent extends ConsumerWidget {
   final VoidCallback? onGoToJobs;
   final VoidCallback? onGoToProfile;
@@ -138,7 +137,7 @@ class _HomeContent extends ConsumerWidget {
               child: const _EarningsCard(),
             ),
           ),
-          // ── Section header ────────────────────────────────────────────────
+          // Section header 
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -174,15 +173,14 @@ class _HomeContent extends ConsumerWidget {
               ),
             ),
           ),
-          // ── Loading state ─────────────────────────────────────────────────
-          if (isLoading)
+          //  Loading state
             const SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
                 child: CircularProgressIndicator(color: Color(0xFF0F9B8E)),
               ),
             )
-          // ── Error state ───────────────────────────────────────────────────
+          //  Error state 
           else if (error != null)
             SliverFillRemaining(
               hasScrollBody: false,
@@ -191,7 +189,7 @@ class _HomeContent extends ConsumerWidget {
                     ref.read(workerFeedProvider.notifier).refresh(),
               ),
             )
-          // ── Empty state ───────────────────────────────────────────────────
+          // Empty state 
           else if (jobs.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
@@ -223,7 +221,7 @@ class _HomeContent extends ConsumerWidget {
                 ),
               ),
             )
-          // ── Jobs list ─────────────────────────────────────────────────────
+          //  Jobs list
           else
             SliverList(
               delegate: SliverChildBuilderDelegate(
@@ -241,7 +239,7 @@ class _HomeContent extends ConsumerWidget {
   }
 }
 
-// ─── Error View ───────────────────────────────────────────────────────────────
+//  Error View
 class _ErrorView extends StatelessWidget {
   final VoidCallback onRetry;
   const _ErrorView({required this.onRetry});
@@ -717,7 +715,7 @@ class _EarningsCard extends ConsumerWidget {
   }
 }
 
-// ─── Job Card (real backend Job model) ───────────────────────────────────────
+// Job Card (real backend Job model) 
 class _JobCard extends StatelessWidget {
   final Job job;
   const _JobCard({required this.job});
@@ -837,7 +835,7 @@ class _JobCard extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            // ── Action buttons ─────────────────────────────────────────────
+            //  Action buttons 
             Row(
               children: [
                 Expanded(
