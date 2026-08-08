@@ -177,6 +177,7 @@ class _HomeContent extends ConsumerWidget {
           // ── Loading state ─────────────────────────────────────────────────
           if (isLoading)
             const SliverFillRemaining(
+              hasScrollBody: false,
               child: Center(
                 child: CircularProgressIndicator(color: Color(0xFF0F9B8E)),
               ),
@@ -184,6 +185,7 @@ class _HomeContent extends ConsumerWidget {
           // ── Error state ───────────────────────────────────────────────────
           else if (error != null)
             SliverFillRemaining(
+              hasScrollBody: false,
               child: _ErrorView(
                 onRetry: () =>
                     ref.read(workerFeedProvider.notifier).refresh(),
@@ -192,9 +194,11 @@ class _HomeContent extends ConsumerWidget {
           // ── Empty state ───────────────────────────────────────────────────
           else if (jobs.isEmpty)
             SliverFillRemaining(
+              hasScrollBody: false,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.work_off_outlined,
                         size: 64,

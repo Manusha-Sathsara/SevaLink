@@ -8,10 +8,10 @@ enum ConnectionMode {
 
 class ApiEndpoints {
   // SWITCH CONNECTION MODE HERE
-  static const ConnectionMode mode = ConnectionMode.emulator;
+  static const ConnectionMode mode = ConnectionMode.wifi;
 
   // Enter your PC's local IP address here if mode is ConnectionMode.wifi:
-  static const String _wifiIp = '192.168.1.38';
+  static const String _wifiIp = '192.168.1.39';
 
 
   static String get _localIp {
