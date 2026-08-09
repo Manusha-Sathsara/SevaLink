@@ -193,6 +193,9 @@ public class WorkerService {
         worker.setBio(request.getBio());
         worker.setSkills(request.getSkills());
         worker.setHourlyRate(request.getHourlyRate());
+        if (request.getExperienceYears() != null) {
+            worker.setExperienceYears(request.getExperienceYears());
+        }
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())

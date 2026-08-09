@@ -29,6 +29,13 @@ public class Review {
 
     private String comment;
 
+    /**
+     * Comma-separated list of uploaded review photo file names (relative to /uploads/).
+     * Example: "uuid1.jpg,uuid2.jpg"
+     */
+    @Column(name = "photo_urls", length = 1024)
+    private String photoUrls;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 }

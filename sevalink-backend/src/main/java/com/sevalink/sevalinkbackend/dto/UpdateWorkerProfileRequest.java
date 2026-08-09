@@ -11,6 +11,7 @@ public class UpdateWorkerProfileRequest {
     private String skills;
     private Double hourlyRate;
     private Long categoryId;
+    private Integer experienceYears;
     private Double latitude;
     private Double longitude;
 }

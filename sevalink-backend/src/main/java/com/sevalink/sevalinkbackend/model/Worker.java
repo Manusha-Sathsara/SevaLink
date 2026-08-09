@@ -45,6 +45,9 @@ public class Worker {
     @Column(name = "total_jobs")
     private Integer totalJobs = 0;
 
+    @Column(name = "experience_years")
+    private Integer experienceYears = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private WorkerStatus status = WorkerStatus.PENDING;
