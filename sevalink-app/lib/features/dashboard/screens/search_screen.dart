@@ -1117,7 +1117,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 Row(
                   children: [
                     Text(
-                      worker.profession,
+                      '${worker.profession} • ${worker.experienceYears} yrs exp',
                       style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(width: 8),
@@ -1297,7 +1297,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             const SizedBox(height: 16),
             _detailRow(Icons.location_on_outlined,    'Location',    worker.location),
             const SizedBox(height: 12),
-            _detailRow(Icons.monetization_on_outlined, 'Hourly Rate', 'LKR ${worker.hourlyRate} / hour'),
+            _detailRow(Icons.work_outline,            'Experience',  '${worker.experienceYears} years'),
+            const SizedBox(height: 12),
+            _detailRow(Icons.payments_outlined,       'Hourly Rate', 'LKR ${worker.hourlyRate} / hour'),
             const SizedBox(height: 24),
             Row(
               children: [

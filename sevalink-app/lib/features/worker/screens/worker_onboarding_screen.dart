@@ -37,6 +37,7 @@ class _WorkerOnboardingScreenState extends ConsumerState<WorkerOnboardingScreen>
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _rateController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _experienceController = TextEditingController();
 
   double? _latitude;
   double? _longitude;
@@ -54,6 +55,7 @@ class _WorkerOnboardingScreenState extends ConsumerState<WorkerOnboardingScreen>
     _locationController.dispose();
     _rateController.dispose();
     _bioController.dispose();
+    _experienceController.dispose();
     super.dispose();
   }
 
@@ -152,6 +154,7 @@ class _WorkerOnboardingScreenState extends ConsumerState<WorkerOnboardingScreen>
         categoryId: _selectedCategoryId,
         latitude: _latitude,
         longitude: _longitude,
+        experienceYears: int.tryParse(_experienceController.text.trim()) ?? 0,
       );
 
       // Refresh the feed & worker profile details to pop onboarding
@@ -442,6 +445,50 @@ class _WorkerOnboardingScreenState extends ConsumerState<WorkerOnboardingScreen>
                 ),
               ),
               validator: (val) => val == null || val.isEmpty ? 'Hourly rate is required' : null,
+            ),
+            const SizedBox(height: 20),
+
+            // Experience Input
+            const Text(
+              'Experience (Years) *',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _experienceController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Color(0xFF1F2937), fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'e.g., 5',
+                hintStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                prefixIcon: const Icon(Icons.work_outline_rounded, color: Color(0xFF2A9134), size: 20),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFF2A9134), width: 1.0),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Color(0xFF2A9134), width: 2.0),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: Colors.red, width: 2.0),
+                ),
+              ),
+              validator: (val) {
+                if (val == null || val.isEmpty) return 'Experience is required';
+                if (int.tryParse(val) == null || int.parse(val) < 0) {
+                  return 'Enter valid years of experience';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 20),
 

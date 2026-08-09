@@ -297,20 +297,12 @@ class _SendQuoteScreenState extends ConsumerState<SendQuoteScreen>
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.currency_rupee,
-                    color: Colors.white, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  'Budget: Rs. ${widget.job.minBudget} - Rs. ${widget.job.maxBudget}',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600),
-                ),
-              ],
+            child: Text(
+              'Budget: Rs. ${widget.job.minBudget} - Rs. ${widget.job.maxBudget}',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -651,7 +643,7 @@ class _SendQuoteScreenState extends ConsumerState<SendQuoteScreen>
               ),
               const SizedBox(height: 40),
               _buildSuccessStat('Quote Amount',
-                  'Rs. ${_amountController.text}', Icons.attach_money_rounded),
+                  'Rs. ${_amountController.text}', Icons.payments_rounded),
               const SizedBox(height: 12),
               _buildSuccessStat(
                 'Estimated Time',

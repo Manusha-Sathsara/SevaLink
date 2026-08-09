@@ -23,6 +23,7 @@ class WorkerSearchResult {
   final int totalReviews;
   final int totalJobs;
   final bool isAvailable;
+  final String bio;
 
   const WorkerSearchResult({
     required this.id,
@@ -38,7 +39,18 @@ class WorkerSearchResult {
     this.totalReviews = 0,
     this.totalJobs = 0,
     this.isAvailable = true,
+    this.bio = '',
   });
+
+  int get experienceYears {
+    if (bio.isEmpty) return 1;
+    final regex = RegExp(r'(\d+)\+?\s*(?:year|yr)', caseSensitive: false);
+    final match = regex.firstMatch(bio);
+    if (match != null) {
+      return int.tryParse(match.group(1) ?? '1') ?? 1;
+    }
+    return 1; // default fallback
+  }
 
   factory WorkerSearchResult.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>? ?? {};
@@ -58,6 +70,7 @@ class WorkerSearchResult {
       totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 0,
       totalJobs: (json['totalJobs'] as num?)?.toInt() ?? 0,
       isAvailable: json['isAvailable'] as bool? ?? true,
+      bio: json['bio'] as String? ?? '',
     );
   }
 }

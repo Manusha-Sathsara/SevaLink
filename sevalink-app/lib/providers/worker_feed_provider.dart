@@ -23,6 +23,7 @@ class WorkerStats {
   final String? categoryName;
   final double? latitude;
   final double? longitude;
+  final int experienceYears;
 
   final bool isAvailable;
 
@@ -41,6 +42,7 @@ class WorkerStats {
     this.categoryName,
     this.latitude,
     this.longitude,
+    this.experienceYears = 0,
     this.isAvailable = true,
   });
 
@@ -59,6 +61,7 @@ class WorkerStats {
     String? categoryName,
     double? latitude,
     double? longitude,
+    int? experienceYears,
     bool? isAvailable,
     bool clearProfileImageUrl = false,
   }) {
@@ -77,6 +80,7 @@ class WorkerStats {
       categoryName: categoryName ?? this.categoryName,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      experienceYears: experienceYears ?? this.experienceYears,
       isAvailable: isAvailable ?? this.isAvailable,
     );
   }
@@ -189,6 +193,7 @@ class WorkerFeedNotifier extends Notifier<WorkerFeedState> {
               categoryName: workerEntry['category']?['name'],
               latitude: workerEntry['latitude'] != null ? (workerEntry['latitude'] as num).toDouble() : null,
               longitude: workerEntry['longitude'] != null ? (workerEntry['longitude'] as num).toDouble() : null,
+              experienceYears: workerEntry['experienceYears'] ?? 0,
               isAvailable: workerEntry['isAvailable'] ?? workerEntry['available'] ?? true,
             );
           }
@@ -222,6 +227,7 @@ class WorkerFeedNotifier extends Notifier<WorkerFeedState> {
     int? categoryId,
     double? latitude,
     double? longitude,
+    int? experienceYears,
   }) async {
     final workerId = state.stats.workerId;
     if (workerId == null) throw Exception('Worker ID not found');
@@ -241,6 +247,7 @@ class WorkerFeedNotifier extends Notifier<WorkerFeedState> {
         'categoryId': categoryId,
         'latitude': latitude,
         'longitude': longitude,
+        'experienceYears': experienceYears,
       },
     );
 
@@ -269,6 +276,7 @@ class WorkerFeedNotifier extends Notifier<WorkerFeedState> {
           categoryName: updatedWorker['category']?['name'],
           latitude: updatedWorker['latitude'] != null ? (updatedWorker['latitude'] as num).toDouble() : null,
           longitude: updatedWorker['longitude'] != null ? (updatedWorker['longitude'] as num).toDouble() : null,
+          experienceYears: updatedWorker['experienceYears'] ?? 0,
         ),
       );
     } else {

@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/constants/api_endpoints.dart';
 class TokenInterceptor extends Interceptor {
@@ -34,10 +34,11 @@ class TokenInterceptor extends Interceptor {
           }
         } catch (e) {
           await secureStorage.deleteAll();
-          // Broadcast session expired logic here or redirect via router provider
+          return handler.next(err);
         }
       } else {
         await secureStorage.deleteAll();
+        return handler.next(err);
       }
     }
     return handler.next(err);

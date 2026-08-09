@@ -66,7 +66,19 @@ class Quotation extends Equatable {
       workerRating: (workerJson['rating'] ?? 0.0).toDouble(),
       workerReviewCount: workerJson['totalJobs'] ?? 0,
       workerLocation: userJson['location'] ?? 'Unknown Location',
-      workerExperienceYears: workerJson['experienceYears'] ?? 0,
+      workerExperienceYears: () {
+        final bioText = workerJson['bio'] as String? ?? '';
+        final rawExp = workerJson['experienceYears'] as num?;
+        if (rawExp != null && rawExp.toInt() > 0) {
+          return rawExp.toInt();
+        }
+        final regex = RegExp(r'(\d+)\+?\s*(?:year|yr)', caseSensitive: false);
+        final match = regex.firstMatch(bioText);
+        if (match != null) {
+          return int.tryParse(match.group(1) ?? '1') ?? 1;
+        }
+        return 1; // fallback
+      }(),
       workerSkills: workerJson['skills'] ?? '',
       workerTotalJobs: workerJson['totalJobs'] ?? 0,
       workerBio: workerJson['bio'] ?? '',

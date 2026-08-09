@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/dio_client.dart';
 import '../models/auth_models.dart';
@@ -68,12 +68,24 @@ class AuthRepository {
   }
 
   String _handleError(DioException e) {
-    if (e.response != null && e.response?.data != null) {
+    // Server responded with an error (4xx / 5xx)
+    if (e.response != null) {
       final data = e.response?.data;
       if (data is Map && data.containsKey('message')) {
         return data['message'];
       }
+      return 'Server error (${e.response?.statusCode}). Please try again.';
     }
-    return 'An unexpected error occurred. Please try again.';
+    // No response — network-level error
+    switch (e.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+        return 'Cannot connect to server. Make sure the backend is running.';
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        return 'Request timed out. Please try again.';
+      default:
+        return 'Network error: ${e.message ?? 'Unknown error'}. Please try again.';
+    }
   }
 }

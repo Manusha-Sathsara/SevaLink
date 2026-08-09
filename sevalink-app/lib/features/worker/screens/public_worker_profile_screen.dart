@@ -18,6 +18,7 @@ class _PublicWorkerProfileScreenState
   bool _isLoading = true;
   String? _error;
   Map<String, dynamic>? _worker;
+  List<dynamic> _reviews = [];
 
   @override
   void initState() {
@@ -28,10 +29,14 @@ class _PublicWorkerProfileScreenState
   Future<void> _fetchWorker() async {
     try {
       final dio = ref.read(dioClientProvider).dio;
-      final res = await dio.get('/workers/${widget.workerId}');
+      final results = await Future.wait([
+        dio.get('/workers/${widget.workerId}'),
+        dio.get('/reviews/worker/${widget.workerId}'),
+      ]);
       if (mounted) {
         setState(() {
-          _worker = res.data as Map<String, dynamic>?;
+          _worker = results[0].data as Map<String, dynamic>?;
+          _reviews = results[1].data is List ? results[1].data as List : [];
           _isLoading = false;
         });
       }
@@ -94,8 +99,19 @@ class _PublicWorkerProfileScreenState
 
     final rating = (_worker!['rating'] ?? 0.0).toDouble();
     final totalJobs = _worker!['totalJobs'] ?? 0;
-    final experienceYears = _worker!['experienceYears'] ?? 0;
     final bio = _worker!['bio'] ?? '';
+    final experienceYears = () {
+      final rawExp = _worker!['experienceYears'] as num?;
+      if (rawExp != null && rawExp.toInt() > 0) {
+        return rawExp.toInt();
+      }
+      final regex = RegExp(r'(\d+)\+?\s*(?:year|yr)', caseSensitive: false);
+      final match = regex.firstMatch(bio);
+      if (match != null) {
+        return int.tryParse(match.group(1) ?? '1') ?? 1;
+      }
+      return 1; // default fallback
+    }();
     final skills = (_worker!['skills'] ?? '') as String;
     final hourlyRateVal = _worker!['hourlyRate'];
     final hourlyRate = hourlyRateVal != null ? hourlyRateVal.toString() : '';
@@ -342,7 +358,7 @@ class _PublicWorkerProfileScreenState
                               if (hourlyRate.isNotEmpty) ...[
                                 const SizedBox(width: 12),
                                 _buildStatCard(
-                                    Icons.monetization_on_outlined,
+                                    Icons.payments_outlined,
                                     'Rs.$hourlyRate/hr',
                                     'Rate'),
                               ],
@@ -418,6 +434,17 @@ class _PublicWorkerProfileScreenState
                               ],
                             ),
                           ),
+
+                        const SizedBox(height: 16),
+
+                        // Rating Summary
+                        if (_reviews.isNotEmpty) ...[
+                          _buildRatingSummaryCard(),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Reviews list
+                        _buildReviewsSection(),
 
                         const SizedBox(height: 40),
                       ],
@@ -524,4 +551,294 @@ class _PublicWorkerProfileScreenState
       ),
     );
   }
+
+  // Rating Summary Card
+  Widget _buildRatingSummaryCard() {
+    // Tally up star counts
+    final counts = [0, 0, 0, 0, 0]; // index 0 = 1★ … index 4 = 5★
+    double total = 0;
+    for (final review in _reviews) {
+      final r = (review['rating'] as num?)?.toInt() ?? 0;
+      if (r >= 1 && r <= 5) {
+        counts[r - 1]++;
+        total += r;
+      }
+    }
+    final avg = _reviews.isEmpty ? 0.0 : total / _reviews.length;
+    final maxCount = counts.reduce((a, b) => a > b ? a : b);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ratings & Reviews',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Big average score
+                Column(
+                  children: [
+                    Text(
+                      avg.toStringAsFixed(1),
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: List.generate(5, (i) => Icon(
+                        i < avg.round() ? Icons.star_rounded : Icons.star_outline_rounded,
+                        color: const Color(0xFFF59E0B),
+                        size: 18,
+                      )),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_reviews.length} ${_reviews.length == 1 ? 'review' : 'reviews'}',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 20),
+                // Breakdown bars (5★ → 1★)
+                Expanded(
+                  child: Column(
+                    children: List.generate(5, (i) {
+                      final starLabel = 5 - i;
+                      final count = counts[starLabel - 1];
+                      final fraction = maxCount == 0 ? 0.0 : count / maxCount;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          children: [
+                            Text(
+                              '$starLabel',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 13),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: fraction,
+                                  backgroundColor: Colors.grey.shade100,
+                                  valueColor: const AlwaysStoppedAnimation(Color(0xFF2A9134)),
+                                  minHeight: 8,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 20,
+                              child: Text(
+                                '$count',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  //  Reviews List Section
+  Widget _buildReviewsSection() {
+    if (_reviews.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.rate_review_outlined, size: 40, color: Colors.grey.shade300),
+              const SizedBox(height: 10),
+              Text(
+                'No reviews yet',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Be the first to review this worker!',
+                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: _reviews.map((review) => _buildReviewCard(review)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(dynamic review) {
+    final client = review['client'] as Map? ?? {};
+    final clientName = client['fullName'] as String? ?? 'Client';
+    final rating = (review['rating'] as num?)?.toInt() ?? 0;
+    final comment = review['comment'] as String? ?? '';
+    final photoUrlsRaw = review['photoUrls'] as String? ?? '';
+    final photoFileNames = photoUrlsRaw.isNotEmpty
+        ? photoUrlsRaw.split(',').where((s) => s.trim().isNotEmpty).toList()
+        : <String>[];
+    final createdAt = review['createdAt'] as String?;
+    final dateLabel = _formatRelativeDate(createdAt);
+    final initials = clientName.isNotEmpty ? clientName[0].toUpperCase() : 'C';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFFE8F8EE),
+                child: Text(
+                  initials,
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2A9134), fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      clientName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1F2937)),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        ...List.generate(5, (i) => Icon(
+                          i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                          color: const Color(0xFFF59E0B),
+                          size: 14,
+                        )),
+                        const SizedBox(width: 6),
+                        Text(
+                          dateLabel,
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              comment,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.5),
+            ),
+          ],
+          // Photo thumbnails
+          if (photoFileNames.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: photoFileNames.map((fileName) {
+                  final url = ApiEndpoints.rewriteImageUrl(
+                    '${ApiEndpoints.baseUrl.replaceAll('/api', '')}/api/public/uploads/$fileName',
+                  );
+                  return Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        url,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 72,
+                          height: 72,
+                          color: Colors.grey.shade100,
+                          child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatRelativeDate(String? isoDate) {
+    if (isoDate == null) return '';
+    try {
+      final dt = DateTime.parse(isoDate);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()} yr ago';
+      if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()} mo ago';
+      if (diff.inDays >= 1) return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+      if (diff.inHours >= 1) return '${diff.inHours} hr ago';
+      if (diff.inMinutes >= 1) return '${diff.inMinutes} min ago';
+      return 'Just now';
+    } catch (_) {
+      return '';
+    }
+  }
 }
+

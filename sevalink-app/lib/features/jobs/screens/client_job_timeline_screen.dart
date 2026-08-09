@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/client_jobs_provider.dart';
 import '../../../core/themes/app_theme.dart';
+import 'rate_worker_screen.dart';
 
 class ClientJobTimelineScreen extends ConsumerStatefulWidget {
   final int jobId;
@@ -22,6 +23,7 @@ class _ClientJobTimelineScreenState extends ConsumerState<ClientJobTimelineScree
   Map<String, dynamic>? _jobDetails;
   List<dynamic> _timeline = [];
   Map<String, dynamic>? _assignedWorker;
+  bool _hasReviewed = false;
 
   Timer? _pollingTimer;
   GoogleMapController? _mapController;
@@ -136,6 +138,7 @@ class _ClientJobTimelineScreenState extends ConsumerState<ClientJobTimelineScree
     }
     try {
       final dio = ref.read(dioClientProvider).dio;
+      final user = ref.read(authProvider).user;
       
       // 1. Fetch job details
       final jobResponse = await dio.get('/jobs/detail/${widget.jobId}');
@@ -145,7 +148,7 @@ class _ClientJobTimelineScreenState extends ConsumerState<ClientJobTimelineScree
       final timelineResponse = await dio.get('/jobs/detail/${widget.jobId}/timeline');
       final newTimeline = timelineResponse.data;
 
-      // 3. If ASSIGNED (or later) and not COMPLETED, get assigned worker
+      // 3. If ASSIGNED (or later), get assigned worker
       final status = newJobDetails?['status'] ?? 'OPEN';
       Map<String, dynamic>? newAssignedWorker;
 
@@ -153,9 +156,17 @@ class _ClientJobTimelineScreenState extends ConsumerState<ClientJobTimelineScree
         try {
           final workerResponse = await dio.get('/jobs/${widget.jobId}/assigned-worker');
           newAssignedWorker = workerResponse.data;
-        } catch (_) {
-          // Worker details could be empty if not accepted yet (fallback)
-        }
+        } catch (_) {}
+      }
+
+      // 4. Check if already reviewed (only for COMPLETED jobs)
+      bool newHasReviewed = false;
+      if (status == 'COMPLETED' && user?.id != null) {
+        try {
+          final checkRes = await dio.get('/reviews/check',
+              queryParameters: {'clientId': user!.id, 'jobId': widget.jobId});
+          newHasReviewed = checkRes.data['hasReviewed'] == true;
+        } catch (_) {}
       }
 
       if (mounted) {
@@ -163,6 +174,7 @@ class _ClientJobTimelineScreenState extends ConsumerState<ClientJobTimelineScree
           _jobDetails = newJobDetails;
           _timeline = newTimeline;
           _assignedWorker = newAssignedWorker;
+          _hasReviewed = newHasReviewed;
           _isLoading = false;
           _error = null;
         });
@@ -717,8 +729,66 @@ class _ClientJobTimelineScreenState extends ConsumerState<ClientJobTimelineScree
     final isCancelled = status == 'CANCELLED';
     final isCompleted = status == 'COMPLETED';
 
-    if (isCancelled || isCompleted) {
-      return const SizedBox.shrink();
+    if (isCancelled) return const SizedBox.shrink();
+
+    // COMPLETED state: show Rate Worker or already reviewed badge
+    if (isCompleted) {
+      final workerId = _assignedWorker?['id'] as int?;
+      final workerName = (_assignedWorker?['user'] as Map?)?['fullName'] as String?;
+      if (_hasReviewed) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF16A34A).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF16A34A).withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Review Submitted — Thank you!',
+                style: TextStyle(
+                  color: Color(0xFF16A34A),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return ElevatedButton.icon(
+        onPressed: workerId == null
+            ? null
+            : () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RateWorkerScreen(
+                      workerId: workerId,
+                      jobId: widget.jobId,
+                      workerName: workerName,
+                    ),
+                  ),
+                );
+                // Refresh to pick up hasReviewed status
+                _fetchData(background: true);
+              },
+        icon: const Icon(Icons.star_rounded, color: Colors.white),
+        label: const Text(
+          'Rate & Review Worker',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2A9134),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: 0,
+        ),
+      );
     }
 
     return Column(
@@ -726,7 +796,6 @@ class _ClientJobTimelineScreenState extends ConsumerState<ClientJobTimelineScree
       children: [
         // Payment Confirm Action
         if (isDone && _jobDetails!['clientPaymentConfirmed'] != true)
-
           ElevatedButton.icon(
             onPressed: _confirmPayment,
             icon: const Icon(Icons.check, color: Colors.white),

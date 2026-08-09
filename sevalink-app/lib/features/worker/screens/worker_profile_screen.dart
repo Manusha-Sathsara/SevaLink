@@ -36,6 +36,7 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
   late TextEditingController _bioController;
   late TextEditingController _skillsController;
   late TextEditingController _rateController;
+  late TextEditingController _experienceController;
 
   // Skill tags state
   List<String> _skillTags = [];
@@ -44,6 +45,10 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
   int? _selectedCategoryId;
   double? _selectedLatitude;
   double? _selectedLongitude;
+
+  // My reviews (read-only)
+  List<dynamic> _myReviews = [];
+  bool _isLoadingReviews = false;
 
   @override
   void initState() {
@@ -65,6 +70,8 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
     _skillsController = TextEditingController();
     _rateController = TextEditingController(
         text: stats.hourlyRate.isNotEmpty ? stats.hourlyRate : '2,500');
+    _experienceController = TextEditingController(
+        text: stats.experienceYears > 0 ? stats.experienceYears.toString() : '');
 
     _skillTags = stats.skills.isNotEmpty
         ? List.from(stats.skills)
@@ -84,9 +91,27 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
     }
 
     // Force refresh worker profile from backend on screen initialization
-    Future.microtask(() {
+    Future.microtask(() async {
       ref.read(workerFeedProvider.notifier).refresh();
+      await _fetchMyReviews();
     });
+  }
+
+  Future<void> _fetchMyReviews() async {
+    if (!mounted) return;
+    setState(() => _isLoadingReviews = true);
+    try {
+      final stats = ref.read(workerFeedProvider).stats;
+      if (stats.workerId == null) return;
+      final dio = ref.read(dioClientProvider).dio;
+      final res = await dio.get('/reviews/worker/${stats.workerId}');
+      if (mounted) {
+        setState(() {
+          _myReviews = res.data is List ? res.data as List : [];
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _isLoadingReviews = false);
   }
 
   Future<void> _selectLocation() async {
@@ -119,6 +144,7 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
     _bioController.dispose();
     _skillsController.dispose();
     _rateController.dispose();
+    _experienceController.dispose();
     super.dispose();
   }
 
@@ -297,6 +323,7 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
         categoryId: _selectedCategoryId,
         latitude: _selectedLatitude,
         longitude: _selectedLongitude,
+        experienceYears: int.tryParse(_experienceController.text.trim()) ?? 0,
       );
 
       // Keep Auth provider state updated for name/phone changes
@@ -377,6 +404,7 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
         if (stats.location.isNotEmpty) _locationController.text = stats.location;
         if (stats.bio.isNotEmpty) _bioController.text = stats.bio;
         if (stats.hourlyRate.isNotEmpty) _rateController.text = stats.hourlyRate;
+        _experienceController.text = stats.experienceYears > 0 ? stats.experienceYears.toString() : '';
         setState(() {
           _selectedCategoryId = stats.categoryId;
           _selectedLatitude = stats.latitude;
@@ -468,6 +496,21 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
                           maxLines: 3,
                         ),
                         const SizedBox(height: 14),
+                         _buildField(
+                          label: 'Experience (Years)',
+                          controller: _experienceController,
+                          icon: Icons.work_outline_rounded,
+                          enabled: _isEditing,
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Required';
+                            if (int.tryParse(v) == null || int.parse(v) < 0) {
+                              return 'Enter valid years of experience';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
                         _buildRateField(),
                         const SizedBox(height: 14),
                         _buildSkillsSection(),
@@ -475,6 +518,11 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
                       const SizedBox(height: 20),
                       _buildSection('Stats', [_buildStatsRow(stats, jobsState)]),
                       const SizedBox(height: 20),
+                      // My Reviews section
+                      if (!_isEditing) ...[
+                        _buildMyReviewsSection(),
+                        const SizedBox(height: 20),
+                      ],
                       if (_isEditing) ...[
                         _buildSaveButton(),
                         const SizedBox(height: 12),
@@ -1232,7 +1280,154 @@ class _WorkerProfileScreenState extends ConsumerState<WorkerProfileScreen> {
     }
     return name.isNotEmpty ? name[0].toUpperCase() : 'W';
   }
+
+  // ─── My Reviews ──────────────────────────────────────────────────────────
+  Widget _buildMyReviewsSection() {
+    final colors = context.sevaColors;
+    final isDark = context.isDark;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: isDark ? Border.all(color: colors.border, width: 1) : null,
+        boxShadow: isDark ? null : [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 16, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'My Reviews',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: colors.textPrimary),
+              ),
+              if (_myReviews.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A9134).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_myReviews.length}',
+                    style: const TextStyle(
+                      color: Color(0xFF2A9134),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isLoadingReviews)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(color: Color(0xFF2A9134), strokeWidth: 2),
+              ),
+            )
+          else if (_myReviews.isEmpty)
+            Center(
+              child: Column(
+                children: [
+                  Icon(Icons.rate_review_outlined, size: 36, color: colors.textSecondary.withValues(alpha: 0.3)),
+                  const SizedBox(height: 8),
+                  Text('No reviews yet', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text('Complete jobs to receive reviews!', style: TextStyle(color: colors.textSecondary.withValues(alpha: 0.6), fontSize: 11)),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: _myReviews.map(_buildMyReviewCard).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMyReviewCard(dynamic review) {
+    final colors = context.sevaColors;
+    final client = review['client'] as Map? ?? {};
+    final clientName = client['fullName'] as String? ?? 'Client';
+    final rating = (review['rating'] as num?)?.toInt() ?? 0;
+    final comment = review['comment'] as String? ?? '';
+    final createdAt = review['createdAt'] as String?;
+    final dateLabel = _formatReviewDate(createdAt);
+    final initials = clientName.isNotEmpty ? clientName[0].toUpperCase() : 'C';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.inputFill,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFFE8F8EE),
+                child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2A9134), fontSize: 14)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(clientName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: colors.textPrimary)),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        ...List.generate(5, (i) => Icon(
+                          i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                          color: const Color(0xFFF59E0B),
+                          size: 13,
+                        )),
+                        const SizedBox(width: 6),
+                        Text(dateLabel, style: TextStyle(fontSize: 11, color: colors.textSecondary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(comment, style: TextStyle(fontSize: 13, color: colors.textSecondary, height: 1.5)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatReviewDate(String? isoDate) {
+    if (isoDate == null) return '';
+    try {
+      final dt = DateTime.parse(isoDate);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()} yr ago';
+      if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()} mo ago';
+      if (diff.inDays >= 1) return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+      if (diff.inHours >= 1) return '${diff.inHours} hr ago';
+      if (diff.inMinutes >= 1) return '${diff.inMinutes} min ago';
+      return 'Just now';
+    } catch (_) {
+      return '';
+    }
+  }
 }
+
 
 // ─── Full-Screen Profile Image Viewer ────────────────────────────────────────
 

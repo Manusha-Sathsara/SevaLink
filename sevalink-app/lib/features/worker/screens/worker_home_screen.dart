@@ -174,13 +174,14 @@ class _HomeContent extends ConsumerWidget {
             ),
           ),
           //  Loading state
+          if (isLoading)
             const SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
                 child: CircularProgressIndicator(color: Color(0xFF0F9B8E)),
               ),
             )
-          //  Error state 
+          //  Error state
           else if (error != null)
             SliverFillRemaining(
               hasScrollBody: false,
@@ -189,7 +190,7 @@ class _HomeContent extends ConsumerWidget {
                     ref.read(workerFeedProvider.notifier).refresh(),
               ),
             )
-          // Empty state 
+          // Empty state
           else if (jobs.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,

@@ -239,11 +239,13 @@ class JobDetailsScreen extends StatelessWidget {
   Widget _buildStatusRow(BuildContext context) {
     return Row(
       children: [
-        _buildChip(
-            context,
-            Icons.location_on_outlined,
-            job.location + (job.distanceKm != null ? ' (${job.distanceKm!.toStringAsFixed(1)} km)' : ''),
-            const Color(0xFF2A9134)),
+        Expanded(
+          child: _buildChip(
+              context,
+              Icons.location_on_outlined,
+              job.location + (job.distanceKm != null ? ' (${job.distanceKm!.toStringAsFixed(1)} km)' : ''),
+              const Color(0xFF2A9134)),
+        ),
         const SizedBox(width: 10),
         _buildChip(context, Icons.access_time_rounded, job.postedAt,
             const Color(0xFF6B7280)),
@@ -273,10 +275,14 @@ class JobDetailsScreen extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-                fontSize: 12, color: color, fontWeight: FontWeight.w500),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: TextStyle(
+                  fontSize: 12, color: color, fontWeight: FontWeight.w500),
+            ),
           ),
         ],
       ),
