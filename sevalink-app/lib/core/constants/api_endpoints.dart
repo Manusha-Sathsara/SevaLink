@@ -21,4 +21,9 @@ class ApiEndpoints {
   
   // Client Endpoints
   static String get clientDashboard => '$baseUrl/client/dashboard';
+
+  // Report Endpoints (user-facing)
+  static String get createReport => '$baseUrl/reports';
+  static String get myReports => '$baseUrl/reports/my';
+  static String reportById(int id) => '$baseUrl/reports/$id';
 }

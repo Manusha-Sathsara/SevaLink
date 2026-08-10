@@ -55,6 +55,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/worker/**").hasRole("WORKER")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
+                        // Report endpoints:
+                        //   /api/reports/**        → any authenticated user (covered by anyRequest below)
+                        //   /api/admin/reports/**  → ADMIN only (covered by /api/admin/** above)
+
                         // All other requests need authentication
                         .anyRequest().authenticated()
                 )

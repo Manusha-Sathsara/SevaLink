@@ -18,6 +18,9 @@ import '../features/worker/screens/worker_profile_screen.dart';
 import '../features/profile/screens/client_profile_screen.dart';
 import '../features/chat/screens/chat_list_screen.dart';
 import '../features/chat/screens/chat_room_screen.dart';
+import '../features/reports/screens/report_form_screen.dart';
+import '../features/reports/screens/my_reports_screen.dart';
+import '../features/reports/screens/report_detail_screen.dart';
 import '../data/models/job.dart';
 
 class RouterNotifier extends ChangeNotifier {
@@ -147,6 +150,30 @@ final routerProvider = Provider<GoRouter>((ref) {
             recipientName: extra['recipientName'] as String,
             recipientRole: extra['recipientRole'] as String,
           );
+        },
+      ),
+      // ── Report routes ────────────────────────────────────────
+      GoRoute(
+        path: '/reports/new',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return ReportFormScreen(
+            reportedUserId: extra['reportedUserId'] as int,
+            reportedUserName: extra['reportedUserName'] as String,
+            jobId: extra['jobId'] as int?,
+            jobTitle: extra['jobTitle'] as String?,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/reports/my',
+        builder: (context, state) => const MyReportsScreen(),
+      ),
+      GoRoute(
+        path: '/reports/detail',
+        builder: (context, state) {
+          final reportId = state.extra as int;
+          return ReportDetailScreen(reportId: reportId);
         },
       ),
     ],
