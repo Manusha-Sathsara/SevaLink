@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import * as api from "./api";
 import {
   PieChart,
@@ -192,25 +192,6 @@ function App({ onLogout }) {
     resolved: complaints.filter(c => c.status === "Resolved").length,
     fraud: complaints.filter(c => c.category === "Fraud").length,
   };
-  const pieData = [
-  { name: "Users", value: 8542 },
-  { name: "Workers", value: 2145 },
-  { name: "Jobs", value: 1245 },
-];
-const barData = [
-  { month: "Jan", jobs: 400 },
-  { month: "Feb", jobs: 700 },
-  { month: "Mar", jobs: 500 },
-  { month: "Apr", jobs: 900 },
-  { month: "May", jobs: 1200 },
-];
-const lineData = [
-  { day: "Mon", users: 200 },
-  { day: "Tue", users: 450 },
-  { day: "Wed", users: 300 },
-  { day: "Thu", users: 600 },
-  { day: "Fri", users: 750 },
-];
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState("");
@@ -288,6 +269,68 @@ const lineData = [
       setComplaintActionLoading(false);
     }
   };
+  const analyticsData = useMemo(() => {
+    const totalUsers = users.length;
+    const totalJobs = jobs.length;
+
+    const completedJobs = jobs.filter(j => j.status === "COMPLETED" || j.status === "Completed");
+    const totalRevenue = completedJobs.reduce((sum, j) => {
+      const min = j.budgetMin || 0;
+      const max = j.budgetMax || 0;
+      return sum + (min + max) / 2;
+    }, 0);
+
+    const totalComplaints = complaints.length;
+    const pendingComplaintsCount = complaints.filter(c => c.status === "Pending" || c.status === "Investigating").length;
+    const resolvedComplaintsCount = complaints.filter(c => c.status === "Resolved").length;
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyJobCounts = months.map(m => ({ month: m, jobs: 0 }));
+    jobs.forEach(j => {
+      if (j.createdAt) {
+        const date = new Date(j.createdAt);
+        const monthIndex = date.getMonth();
+        if (monthIndex >= 0 && monthIndex < 12) {
+          monthlyJobCounts[monthIndex].jobs += 1;
+        }
+      }
+    });
+
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dailyUserGrowth = days.map(d => ({ day: d, users: 0 }));
+    users.forEach(u => {
+      if (u.createdAt) {
+        const date = new Date(u.createdAt);
+        const dayIndex = date.getDay();
+        if (dayIndex >= 0 && dayIndex < 7) {
+          dailyUserGrowth[dayIndex].users += 1;
+        }
+      }
+    });
+
+    const categoryCounts = {};
+    workers.forEach(w => {
+      const cat = w.category || "Uncategorized";
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    });
+    const categoryPieData = Object.entries(categoryCounts).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    return {
+      totalUsers,
+      totalJobs,
+      totalRevenue,
+      totalComplaints,
+      pendingComplaintsCount,
+      resolvedComplaintsCount,
+      monthlyJobCounts,
+      dailyUserGrowth,
+      categoryPieData
+    };
+  }, [users, jobs, complaints, workers]);
+
   const handleViewComplaint = (complaint) => {
     setComplaintViewModal(complaint);
   };
@@ -1421,10 +1464,10 @@ const lineData = [
               Total Users
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              8,542
+              {analyticsData.totalUsers.toLocaleString()}
             </h1>
             <p className="text-green-500 mt-2">
-              +12% Growth
+              Platform Registered
             </p>
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-yellow-400">
@@ -1432,10 +1475,10 @@ const lineData = [
               Total Jobs
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              1,245
+              {analyticsData.totalJobs.toLocaleString()}
             </h1>
             <p className="text-green-500 mt-2">
-              +8% Growth
+              Postings Count
             </p>
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-green-500">
@@ -1443,10 +1486,10 @@ const lineData = [
               Revenue
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              LKR 1.2M
+              LKR {analyticsData.totalRevenue.toLocaleString()}
             </h1>
             <p className="text-green-500 mt-2">
-              Monthly Revenue
+              Completed Jobs Value
             </p>
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-red-500">
@@ -1454,10 +1497,10 @@ const lineData = [
               Complaints
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              84
+              {analyticsData.totalComplaints.toLocaleString()}
             </h1>
             <p className="text-red-500 mt-2">
-              Needs Review
+              {analyticsData.pendingComplaintsCount} Pending Review
             </p>
           </div>
         </div>
@@ -1469,7 +1512,7 @@ const lineData = [
               Monthly Jobs
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={barData}>
+              <BarChart data={analyticsData.monthlyJobCounts}>
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
@@ -1486,7 +1529,7 @@ const lineData = [
               User Growth
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={lineData}>
+              <LineChart data={analyticsData.dailyUserGrowth}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis />
@@ -1512,15 +1555,16 @@ const lineData = [
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={pieData}
+                  data={analyticsData.categoryPieData}
                   dataKey="value"
                   outerRadius={100}
                   fill="#f97316"
                   label
                 >
-                  <Cell fill="#f97316" />
-                  <Cell fill="#22c55e" />
-                  <Cell fill="#eab308" />
+                  {analyticsData.categoryPieData.map((entry, index) => {
+                    const colorsList = ["#f97316", "#22c55e", "#eab308", "#3b82f6", "#a855f7", "#ec4899"];
+                    return <Cell key={`cell-${index}`} fill={colorsList[index % colorsList.length]} />;
+                  })}
                 </Pie>
                 <Tooltip />
               </PieChart>
@@ -1534,24 +1578,30 @@ const lineData = [
             <div className="space-y-6">
               <div>
                 <p className="font-bold">
-                  Resolved Complaints
+                  Resolved Complaints ({analyticsData.resolvedComplaintsCount})
                 </p>
                 <div className="w-full bg-gray-200 rounded-full h-4 mt-2">
-                  <div className="bg-green-500 h-4 rounded-full w-3/4"></div>
+                  <div
+                    className="bg-green-500 h-4 rounded-full transition-all"
+                    style={{ width: `${analyticsData.totalComplaints > 0 ? (analyticsData.resolvedComplaintsCount / analyticsData.totalComplaints * 100) : 0}%` }}
+                  ></div>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  75%
+                  {analyticsData.totalComplaints > 0 ? Math.round(analyticsData.resolvedComplaintsCount / analyticsData.totalComplaints * 100) : 0}%
                 </p>
               </div>
               <div>
                 <p className="font-bold">
-                  Pending Complaints
+                  Pending Complaints ({analyticsData.pendingComplaintsCount})
                 </p>
                 <div className="w-full bg-gray-200 rounded-full h-4 mt-2">
-                  <div className="bg-yellow-400 h-4 rounded-full w-1/4"></div>
+                  <div
+                    className="bg-yellow-400 h-4 rounded-full transition-all"
+                    style={{ width: `${analyticsData.totalComplaints > 0 ? (analyticsData.pendingComplaintsCount / analyticsData.totalComplaints * 100) : 0}%` }}
+                  ></div>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  25%
+                  {analyticsData.totalComplaints > 0 ? Math.round(analyticsData.pendingComplaintsCount / analyticsData.totalComplaints * 100) : 0}%
                 </p>
               </div>
             </div>
