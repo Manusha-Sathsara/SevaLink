@@ -8,6 +8,7 @@ import 'notifications_drawer.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../jobs/screens/job_location_picker_screen.dart';
 import '../../../core/utils/location_helper.dart';
+import '../../../providers/client_dashboard_provider.dart';
 
 // ============================================================================
 // DOMAIN MODELS (Mock Data Structures)
@@ -28,6 +29,7 @@ class ServiceCategory {
 }
 
 class WorkerProfile {
+  final int id;
   final String name;
   final String profession;
   final int hourlyRate;
@@ -37,6 +39,7 @@ class WorkerProfile {
   final String imageUrl;
 
   const WorkerProfile({
+    this.id = 0,
     required this.name,
     required this.profession,
     required this.hourlyRate,
@@ -532,6 +535,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   }
 
   Widget _buildTopRatedWorkers() {
+    final topWorkersAsync = ref.watch(topWorkersProvider);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
@@ -545,7 +550,19 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
               ),
               InkWell(
-                onTap: () => context.go('/client/jobs'),
+                onTap: () {
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          const SearchScreen(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      transitionDuration: const Duration(milliseconds: 280),
+                    ),
+                  );
+                },
                 child: const Text(
                   'View All',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFFD3410A)),
@@ -554,148 +571,173 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          ListView.separated(
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            itemCount: _topWorkers.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              final worker = _topWorkers[index];
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Hardware-accelerated image clipping for profile aesthetic
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.network(
-                        worker.imageUrl,
-                        width: 90,
-                        height: 90,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 90, height: 90,
-                            color: Colors.grey.shade100,
-                            child: Icon(Icons.person, color: Colors.grey.shade300, size: 40),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  worker.name,
-                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                'Rs. ${worker.hourlyRate}',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD3410A)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                worker.profession,
-                                style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
-                              ),
-                              Text(
-                                'per hour',
-                                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          // Programmatic star rating generation
-                          Row(
-                            children: [
-                              Row(
-                                children: List.generate(5, (starIndex) {
-                                  IconData iconData;
-                                  if (starIndex < worker.rating.floor()) {
-                                    iconData = Icons.star_rounded;
-                                  } else if (starIndex < worker.rating) {
-                                    iconData = Icons.star_half_rounded;
-                                  } else {
-                                    iconData = Icons.star_outline_rounded;
-                                  }
-                                  return Icon(iconData, color: const Color(0xFFFFC107), size: 18);
-                                }),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${worker.rating}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '(${worker.reviewCount})',
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          // Conditional rendering of trust signal
-                          if (worker.isVerified)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFF0E5), // Subtle tint of brand primary
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.verified_outlined, color: Color(0xFFD3410A), size: 16),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Seva Verified',
-                                    style: TextStyle(
-                                      color: Color(0xFFD3410A),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
+          topWorkersAsync.when(
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: CircularProgressIndicator(color: Color(0xFFD3410A)),
+              ),
+            ),
+            error: (err, stack) => _buildWorkerList(_topWorkers),
+            data: (workersList) {
+              final displayList = workersList.isNotEmpty ? workersList : _topWorkers;
+              return _buildWorkerList(displayList);
             },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildWorkerList(List<WorkerProfile> workers) {
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      itemCount: workers.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final worker = workers[index];
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () {
+              if (worker.id != 0) {
+                context.push('/client/worker/${worker.id}');
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      worker.imageUrl,
+                      width: 90,
+                      height: 90,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 90,
+                          height: 90,
+                          color: Colors.grey.shade100,
+                          child: Icon(Icons.person, color: Colors.grey.shade300, size: 40),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                worker.name,
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              'Rs. ${worker.hourlyRate}',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFD3410A)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              worker.profession,
+                              style: TextStyle(fontSize: 14, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              'per hour',
+                              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Row(
+                              children: List.generate(5, (starIndex) {
+                                IconData iconData;
+                                if (starIndex < worker.rating.floor()) {
+                                  iconData = Icons.star_rounded;
+                                } else if (starIndex < worker.rating) {
+                                  iconData = Icons.star_half_rounded;
+                                } else {
+                                  iconData = Icons.star_outline_rounded;
+                                }
+                                return Icon(iconData, color: const Color(0xFFFFC107), size: 18);
+                              }),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${worker.rating}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '(${worker.reviewCount})',
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (worker.isVerified)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF0E5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.verified_outlined, color: Color(0xFFD3410A), size: 16),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Seva Verified',
+                                  style: TextStyle(
+                                    color: Color(0xFFD3410A),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
