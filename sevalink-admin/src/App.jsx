@@ -2036,30 +2036,7 @@ const lineData = [
             </div>
           </div>
         </div>
-        {/* Security Settings */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Security Settings
-          </h2>
-          <div className="space-y-5">
-            <div className="flex justify-between items-center">
-              <p>Two-Factor Authentication</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Login Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Session Timeout</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Password Expiry</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-          </div>
-        </div>
+
         {/* Notifications */}
         <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6">
