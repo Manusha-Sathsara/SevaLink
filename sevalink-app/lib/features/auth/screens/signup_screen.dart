@@ -24,7 +24,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   bool _agreedToTerms = false;
   DateTime? _selectedDate;
   @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_onPasswordChanged);
+  }
+  @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -175,9 +181,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ),
                     onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                   ),
-                  validator: (value) => value!.length < 6 ? 'Min 6 characters' : null,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Required';
+                    if (value.length < 8 ||
+                        !value.contains(RegExp(r'[A-Z]')) ||
+                        !value.contains(RegExp(r'[a-z]')) ||
+                        !value.contains(RegExp(r'[0-9]')) ||
+                        !value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                      return 'Password does not meet criteria';
+                    }
+                    return null;
+                  },
                 ),
-                const SizedBox(height: 24),
+                _buildPasswordValidationGuide(),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -240,6 +256,56 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _onPasswordChanged() {
+    setState(() {});
+  }
+
+  Widget _buildPasswordValidationGuide() {
+    final password = _passwordController.text;
+    final hasMinLength = password.length >= 8;
+    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
+    final hasLowercase = password.contains(RegExp(r'[a-z]'));
+    final hasDigits = password.contains(RegExp(r'[0-9]'));
+    final hasSpecialChar = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+
+    Widget buildValidationRow(String text, bool isMet) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2.0),
+        child: Row(
+          children: [
+            Icon(
+              isMet ? Icons.check_circle_outline : Icons.cancel_outlined,
+              color: isMet ? Colors.green : Colors.red,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                color: isMet ? Colors.green : Colors.red,
+                fontSize: 12,
+                fontWeight: isMet ? FontWeight.w500 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        buildValidationRow('At least 8 characters', hasMinLength),
+        buildValidationRow('Contains an uppercase letter (A-Z)', hasUppercase),
+        buildValidationRow('Contains a lowercase letter (a-z)', hasLowercase),
+        buildValidationRow('Contains a number (0-9)', hasDigits),
+        buildValidationRow('Contains a symbol (!@#\$%...)', hasSpecialChar),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }

@@ -65,6 +65,42 @@ public class EmailService {
         }
     }
 
+    public boolean sendEmail(String to, String subject, String body) {
+        // Always log for development
+        logger.info("========================================");
+        logger.info("📧 EMAIL NOTIFICATION");
+        logger.info("========================================");
+        logger.info("To: {}", to);
+        logger.info("Subject: {}", subject);
+        logger.info("========================================");
+
+        if (!emailEnabled || mailSender == null || fromEmail.isEmpty()) {
+            StringBuilder reason = new StringBuilder("Email cannot be sent. ");
+            if (!emailEnabled) reason.append("Email is disabled (app.email.enabled=false). ");
+            if (mailSender == null) reason.append("MailSender bean unavailable. ");
+            if (fromEmail.isEmpty()) reason.append("From email is not configured. ");
+            logger.warn("⚠️ Email not sent - Check configuration: {}", reason.toString());
+            return handleEmailFailure(reason.toString());
+        }
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(body);
+            message.setFrom(fromEmail);
+            message.setReplyTo(fromEmail);
+
+            logger.info("Attempting to send email...");
+            mailSender.send(message);
+            logger.info("✅ Email sent successfully to: {}", to);
+            return true;
+        } catch (Exception e) {
+            logger.error("❌ Failed to send email: {}", e.getMessage());
+            return handleEmailFailure("Unable to deliver email: " + e.getMessage());
+        }
+    }
+
     private boolean handleEmailFailure(String reason) {
         if (emailFailOpen) {
             logger.warn("⚠️ Email delivery failed but fail-open is enabled. Reset PIN is available in logs.");

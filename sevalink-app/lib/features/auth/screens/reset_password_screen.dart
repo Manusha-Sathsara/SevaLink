@@ -32,6 +32,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   void initState() {
     super.initState();
     _startTimer();
+    _passwordController.addListener(_onPasswordChanged);
   }
   void _startTimer() {
     setState(() {
@@ -49,6 +50,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
   @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _timer?.cancel();
     _pinController.dispose();
     _passwordController.dispose();
@@ -185,9 +187,19 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                       ),
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                    validator: (value) => value!.length < 6 ? 'Min 6 characters' : null,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Required';
+                      if (value.length < 8 ||
+                          !value.contains(RegExp(r'[A-Z]')) ||
+                          !value.contains(RegExp(r'[a-z]')) ||
+                          !value.contains(RegExp(r'[0-9]')) ||
+                          !value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+                        return 'Password does not meet criteria';
+                      }
+                      return null;
+                    },
                   ),
-                  const SizedBox(height: 20),
+                  _buildPasswordValidationGuide(),
                   AuthTextField(
                     label: 'Confirm New Password',
                     hint: 'Re-enter new password',
@@ -216,6 +228,56 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _onPasswordChanged() {
+    setState(() {});
+  }
+
+  Widget _buildPasswordValidationGuide() {
+    final password = _passwordController.text;
+    final hasMinLength = password.length >= 8;
+    final hasUppercase = password.contains(RegExp(r'[A-Z]'));
+    final hasLowercase = password.contains(RegExp(r'[a-z]'));
+    final hasDigits = password.contains(RegExp(r'[0-9]'));
+    final hasSpecialChar = password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+
+    Widget buildValidationRow(String text, bool isMet) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2.0),
+        child: Row(
+          children: [
+            Icon(
+              isMet ? Icons.check_circle_outline : Icons.cancel_outlined,
+              color: isMet ? Colors.green : Colors.red,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                color: isMet ? Colors.green : Colors.red,
+                fontSize: 12,
+                fontWeight: isMet ? FontWeight.w500 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        buildValidationRow('At least 8 characters', hasMinLength),
+        buildValidationRow('Contains an uppercase letter (A-Z)', hasUppercase),
+        buildValidationRow('Contains a lowercase letter (a-z)', hasLowercase),
+        buildValidationRow('Contains a number (0-9)', hasDigits),
+        buildValidationRow('Contains a symbol (!@#\$%...)', hasSpecialChar),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }

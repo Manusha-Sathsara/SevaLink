@@ -2,6 +2,7 @@ package com.sevalink.sevalinkbackend.service;
 
 import com.sevalink.sevalinkbackend.dto.*;
 import com.sevalink.sevalinkbackend.model.User;
+import com.sevalink.sevalinkbackend.model.UserRole;
 import com.sevalink.sevalinkbackend.repository.UserRepository;
 import com.sevalink.sevalinkbackend.security.JwtTokenProvider;
 import org.slf4j.Logger;
@@ -78,6 +79,35 @@ public class AuthService {
 
         // STEP 8: Convert User entity to UserDTO (hides password hash)
         UserDTO userDTO = convertToDTO(savedUser);
+
+        // Send email to admin if a WORKER registers and alert is enabled
+        try {
+            if (UserRole.WORKER.equals(savedUser.getRole())) {
+                java.util.List<User> admins = userRepository.findAllByRole(UserRole.ADMIN);
+                for (User admin : admins) {
+                    if (admin.getWorkerRegistrationAlerts() != null && admin.getWorkerRegistrationAlerts()) {
+                        String subject = "SevaLink Admin - New Worker Registered";
+                        String body = String.format(
+                            "Hello %s,\n\n" +
+                            "A new worker has registered on the SevaLink platform.\n\n" +
+                            "Worker Details:\n" +
+                            "Name: %s\n" +
+                            "Email: %s\n" +
+                            "Phone: %s\n\n" +
+                            "Please login to the Admin Dashboard to manage user verifications.\n\n" +
+                            "Best regards,\nSevaLink System",
+                            admin.getFullName(),
+                            savedUser.getFullName(),
+                            savedUser.getEmail(),
+                            savedUser.getPhoneNumber()
+                        );
+                        emailService.sendEmail(admin.getEmail(), subject, body);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send worker registration email alert: " + e.getMessage());
+        }
 
         // STEP 9: Return AuthResponse with tokens + user info
         return new AuthResponse(accessToken, refreshToken, userDTO);
@@ -248,9 +278,17 @@ public class AuthService {
         if (request.getBirthday() != null) user.setBirthday(request.getBirthday());
         if (request.getLocation() != null) user.setLocation(request.getLocation());
         if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
+        if (request.getComplaintAlerts() != null) user.setComplaintAlerts(request.getComplaintAlerts());
+        if (request.getWorkerRegistrationAlerts() != null) user.setWorkerRegistrationAlerts(request.getWorkerRegistrationAlerts());
 
         // Change password if requested
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            if (request.getOldPassword() == null || request.getOldPassword().isBlank()) {
+                throw new RuntimeException("Current password is required to change password");
+            }
+            if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+                throw new RuntimeException("Current password is incorrect");
+            }
             user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         }
 
@@ -273,6 +311,8 @@ public class AuthService {
         dto.setBirthday(user.getBirthday());
         dto.setIsPhoneVerified(user.getIsPhoneVerified());
         dto.setIsActive(user.getIsActive());
+        dto.setComplaintAlerts(user.getComplaintAlerts());
+        dto.setWorkerRegistrationAlerts(user.getWorkerRegistrationAlerts());
         // Notice: passwordHash is NOT copied!
         return dto;
     }

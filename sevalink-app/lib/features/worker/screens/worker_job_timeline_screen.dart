@@ -637,7 +637,13 @@ class _WorkerJobTimelineScreenState extends ConsumerState<WorkerJobTimelineScree
                   children: [
                     const Icon(Icons.person, color: Color(0xFF2A9134), size: 18),
                     const SizedBox(width: 8),
-                    Text(clientName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+                    Expanded(
+                      child: Text(
+                        clientName,
+                        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),

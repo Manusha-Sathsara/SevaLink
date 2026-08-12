@@ -36,4 +36,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Count currently active users who have logged in within the last 10 minutes
     long countByIsActiveTrueAndLastLoginAfter(LocalDateTime lastLogin);
+
+    java.util.List<User> findAllByRole(UserRole role);
 }

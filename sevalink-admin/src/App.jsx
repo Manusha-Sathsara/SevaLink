@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import * as api from "./api";
 import {
   PieChart,
@@ -18,7 +18,11 @@ import {
 function App({ onLogout }) {
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [complaintAlerts, setComplaintAlerts] = useState(true);
+  const [workerRegistrationAlerts, setWorkerRegistrationAlerts] = useState(true);
+  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -29,6 +33,12 @@ function App({ onLogout }) {
     onlineUsers: 0,
   });
   const [workers, setWorkers] = useState([]);
+  const [enableUserRegistrations, setEnableUserRegistrations] = useState(() => {
+    return localStorage.getItem("enableUserRegistrations") !== "false";
+  });
+  const [enableWorkerVerification, setEnableWorkerVerification] = useState(() => {
+    return localStorage.getItem("enableWorkerVerification") !== "false";
+  });
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -63,6 +73,8 @@ function App({ onLogout }) {
         setAdminName(user.fullName || "");
         setAdminEmail(user.email || "");
         setProfileImageUrl(user.profileImageUrl || "");
+        setComplaintAlerts(user.complaintAlerts !== false);
+        setWorkerRegistrationAlerts(user.workerRegistrationAlerts !== false);
       }
     }).catch(() => {});
     api.getAdminDashboardStats()
@@ -85,7 +97,6 @@ function App({ onLogout }) {
       console.error("Unable to update worker status", error);
     }
   };
-
   const handleVerifySubmit = async (e) => {
     e.preventDefault();
     if (!selectedWorker || !nicNumber || !verificationDocument || !policeReport) {
@@ -104,7 +115,6 @@ function App({ onLogout }) {
       alert(error.message || "Failed to verify worker.");
     }
   };
-
   const handleRejectSubmit = async (e) => {
     e.preventDefault();
     if (!selectedWorker || !rejectionReason) {
@@ -182,25 +192,6 @@ function App({ onLogout }) {
     resolved: complaints.filter(c => c.status === "Resolved").length,
     fraud: complaints.filter(c => c.category === "Fraud").length,
   };
-  const pieData = [
-  { name: "Users", value: 8542 },
-  { name: "Workers", value: 2145 },
-  { name: "Jobs", value: 1245 },
-];
-const barData = [
-  { month: "Jan", jobs: 400 },
-  { month: "Feb", jobs: 700 },
-  { month: "Mar", jobs: 500 },
-  { month: "Apr", jobs: 900 },
-  { month: "May", jobs: 1200 },
-];
-const lineData = [
-  { day: "Mon", users: 200 },
-  { day: "Tue", users: 450 },
-  { day: "Wed", users: 300 },
-  { day: "Thu", users: 600 },
-  { day: "Fri", users: 750 },
-];
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState("");
@@ -278,6 +269,68 @@ const lineData = [
       setComplaintActionLoading(false);
     }
   };
+  const analyticsData = useMemo(() => {
+    const totalUsers = users.length;
+    const totalJobs = jobs.length;
+
+    const completedJobs = jobs.filter(j => j.status === "COMPLETED" || j.status === "Completed");
+    const totalRevenue = completedJobs.reduce((sum, j) => {
+      const min = j.budgetMin || 0;
+      const max = j.budgetMax || 0;
+      return sum + (min + max) / 2;
+    }, 0);
+
+    const totalComplaints = complaints.length;
+    const pendingComplaintsCount = complaints.filter(c => c.status === "Pending" || c.status === "Investigating").length;
+    const resolvedComplaintsCount = complaints.filter(c => c.status === "Resolved").length;
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyJobCounts = months.map(m => ({ month: m, jobs: 0 }));
+    jobs.forEach(j => {
+      if (j.createdAt) {
+        const date = new Date(j.createdAt);
+        const monthIndex = date.getMonth();
+        if (monthIndex >= 0 && monthIndex < 12) {
+          monthlyJobCounts[monthIndex].jobs += 1;
+        }
+      }
+    });
+
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dailyUserGrowth = days.map(d => ({ day: d, users: 0 }));
+    users.forEach(u => {
+      if (u.createdAt) {
+        const date = new Date(u.createdAt);
+        const dayIndex = date.getDay();
+        if (dayIndex >= 0 && dayIndex < 7) {
+          dailyUserGrowth[dayIndex].users += 1;
+        }
+      }
+    });
+
+    const categoryCounts = {};
+    workers.forEach(w => {
+      const cat = w.category || "Uncategorized";
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    });
+    const categoryPieData = Object.entries(categoryCounts).map(([name, value]) => ({
+      name,
+      value
+    }));
+
+    return {
+      totalUsers,
+      totalJobs,
+      totalRevenue,
+      totalComplaints,
+      pendingComplaintsCount,
+      resolvedComplaintsCount,
+      monthlyJobCounts,
+      dailyUserGrowth,
+      categoryPieData
+    };
+  }, [users, jobs, complaints, workers]);
+
   const handleViewComplaint = (complaint) => {
     setComplaintViewModal(complaint);
   };
@@ -444,12 +497,10 @@ const lineData = [
     }
   };
   // ================= DASHBOARD =================
-  
   // ================= TOGGLE SWITCH COMPONENT =================
   const ToggleSwitch = ({ checked, onChange, defaultChecked }) => {
     const [internalChecked, setInternalChecked] = React.useState(defaultChecked || false);
     const isChecked = checked !== undefined ? checked : internalChecked;
-    
     const handleToggle = () => {
       if (onChange) {
         onChange(!isChecked);
@@ -1183,7 +1234,6 @@ const lineData = [
             <h1 className="text-5xl font-bold text-red-500 mt-3">{jobs.filter(j=> j.status === 'CANCELLED' || j.status === 'Cancelled').length}</h1>
           </div>
         </div>
-   
         {/* Search */}
         <div className="flex gap-4 mb-6">
           <input
@@ -1401,58 +1451,6 @@ const lineData = [
         )}
       </div>
         );
-      case "chat":
-        return (
-          <div className="flex-1 flex flex-col">
-          {/* Top */}
-          <div className="bg-white p-5 border-b">
-            <h1 className="text-2xl font-bold">
-              Job #5678
-            </h1>
-            <p className="text-gray-500">
-              Nimal Fernando & Sunil Perera
-            </p>
-          </div>
-          {/* Messages */}
-          <div className="flex-1 p-6 space-y-5 overflow-y-auto">
-            <div className="flex justify-start">
-              <div className="bg-gray-300 px-5 py-3 rounded-2xl max-w-sm">
-<div>
-  <p>When can you come?</p>
-  <span className="text-xs text-gray-500">
-    2:45 PM
-  </span>
-</div>              </div>
-            </div>
-            <div className="flex justify-end">
-              <div className="bg-orange-500 text-white px-5 py-3 rounded-2xl max-w-sm">
-                I can come by 3 PM today.
-              </div>
-            </div>
-            <div className="flex justify-start">
-              <div className="bg-gray-300 px-5 py-3 rounded-2xl max-w-sm">
-                Please bring materials.
-                <div className="flex justify-start">
-  <div className="bg-red-500 text-white px-5 py-3 rounded-2xl max-w-sm">
-    ⚠ Abusive Message Detected
-  </div>
-</div>
-              </div>
-            </div>
-          </div>
-          {/* Bottom Input */}
-          <div className="bg-white p-4 border-t flex gap-4">
-            <input
-              type="text"
-              placeholder="Type message..."
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <button className="bg-orange-500 text-white px-6 rounded-2xl">
-              Send
-            </button>
-          </div>
-        </div>
-        );
       case "analytics":
         return (
           <div className="flex-1 p-8 overflow-y-auto">
@@ -1466,10 +1464,10 @@ const lineData = [
               Total Users
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              8,542
+              {analyticsData.totalUsers.toLocaleString()}
             </h1>
             <p className="text-green-500 mt-2">
-              +12% Growth
+              Platform Registered
             </p>
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-yellow-400">
@@ -1477,10 +1475,10 @@ const lineData = [
               Total Jobs
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              1,245
+              {analyticsData.totalJobs.toLocaleString()}
             </h1>
             <p className="text-green-500 mt-2">
-              +8% Growth
+              Postings Count
             </p>
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-green-500">
@@ -1488,10 +1486,10 @@ const lineData = [
               Revenue
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              LKR 1.2M
+              LKR {analyticsData.totalRevenue.toLocaleString()}
             </h1>
             <p className="text-green-500 mt-2">
-              Monthly Revenue
+              Completed Jobs Value
             </p>
           </div>
           <div className="bg-white p-6 rounded-3xl shadow-md border-l-4 border-red-500">
@@ -1499,10 +1497,10 @@ const lineData = [
               Complaints
             </p>
             <h1 className="text-5xl font-bold mt-3">
-              84
+              {analyticsData.totalComplaints.toLocaleString()}
             </h1>
             <p className="text-red-500 mt-2">
-              Needs Review
+              {analyticsData.pendingComplaintsCount} Pending Review
             </p>
           </div>
         </div>
@@ -1514,7 +1512,7 @@ const lineData = [
               Monthly Jobs
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={barData}>
+              <BarChart data={analyticsData.monthlyJobCounts}>
                 <XAxis dataKey="month" />
                 <YAxis />
                 <Tooltip />
@@ -1531,7 +1529,7 @@ const lineData = [
               User Growth
             </h2>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={lineData}>
+              <LineChart data={analyticsData.dailyUserGrowth}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis />
@@ -1557,15 +1555,16 @@ const lineData = [
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={pieData}
+                  data={analyticsData.categoryPieData}
                   dataKey="value"
                   outerRadius={100}
                   fill="#f97316"
                   label
                 >
-                  <Cell fill="#f97316" />
-                  <Cell fill="#22c55e" />
-                  <Cell fill="#eab308" />
+                  {analyticsData.categoryPieData.map((entry, index) => {
+                    const colorsList = ["#f97316", "#22c55e", "#eab308", "#3b82f6", "#a855f7", "#ec4899"];
+                    return <Cell key={`cell-${index}`} fill={colorsList[index % colorsList.length]} />;
+                  })}
                 </Pie>
                 <Tooltip />
               </PieChart>
@@ -1579,24 +1578,30 @@ const lineData = [
             <div className="space-y-6">
               <div>
                 <p className="font-bold">
-                  Resolved Complaints
+                  Resolved Complaints ({analyticsData.resolvedComplaintsCount})
                 </p>
                 <div className="w-full bg-gray-200 rounded-full h-4 mt-2">
-                  <div className="bg-green-500 h-4 rounded-full w-3/4"></div>
+                  <div
+                    className="bg-green-500 h-4 rounded-full transition-all"
+                    style={{ width: `${analyticsData.totalComplaints > 0 ? (analyticsData.resolvedComplaintsCount / analyticsData.totalComplaints * 100) : 0}%` }}
+                  ></div>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  75%
+                  {analyticsData.totalComplaints > 0 ? Math.round(analyticsData.resolvedComplaintsCount / analyticsData.totalComplaints * 100) : 0}%
                 </p>
               </div>
               <div>
                 <p className="font-bold">
-                  Pending Complaints
+                  Pending Complaints ({analyticsData.pendingComplaintsCount})
                 </p>
                 <div className="w-full bg-gray-200 rounded-full h-4 mt-2">
-                  <div className="bg-yellow-400 h-4 rounded-full w-1/4"></div>
+                  <div
+                    className="bg-yellow-400 h-4 rounded-full transition-all"
+                    style={{ width: `${analyticsData.totalComplaints > 0 ? (analyticsData.pendingComplaintsCount / analyticsData.totalComplaints * 100) : 0}%` }}
+                  ></div>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  25%
+                  {analyticsData.totalComplaints > 0 ? Math.round(analyticsData.pendingComplaintsCount / analyticsData.totalComplaints * 100) : 0}%
                 </p>
               </div>
             </div>
@@ -1801,15 +1806,31 @@ const lineData = [
                 <button onClick={() => setComplaintViewModal(null)} className="text-gray-500 text-2xl">×</button>
               </div>
               <div className="space-y-3 text-sm text-gray-700">
-                <p><span className="font-semibold">Reported by:</span> {complaintViewModal.filedByName || "Unknown"}</p>
-                <p><span className="font-semibold">Email:</span> {complaintViewModal.filedByEmail || "-"}</p>
-                <p><span className="font-semibold">Category:</span> {complaintViewModal.category || "General"}</p>
-                <p><span className="font-semibold">Priority:</span> {complaintViewModal.priority || "Low"}</p>
-                <p><span className="font-semibold">Status:</span> {complaintViewModal.status || "Pending"}</p>
-                <p><span className="font-semibold">Created:</span> {complaintViewModal.createdAt ? new Date(complaintViewModal.createdAt).toLocaleString() : "-"}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <p><span className="font-semibold text-gray-500">Category:</span> <span className="font-medium text-gray-900">{complaintViewModal.category || "General"}</span></p>
+                  <p><span className="font-semibold text-gray-500">Priority:</span> <span className="font-medium text-gray-900">{complaintViewModal.priority || "Low"}</span></p>
+                  <p><span className="font-semibold text-gray-500">Status:</span> <span className="font-medium text-gray-900">{complaintViewModal.status || "Pending"}</span></p>
+                  <p><span className="font-semibold text-gray-500">Created:</span> <span className="font-medium text-gray-900">{complaintViewModal.createdAt ? new Date(complaintViewModal.createdAt).toLocaleString() : "-"}</span></p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 border-t border-b border-gray-100 py-4 my-2">
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-2">Complainer ({complaintViewModal.filedByRole || "User"})</h4>
+                    <p><span className="font-semibold text-gray-500">Name:</span> <span className="font-medium text-gray-900">{complaintViewModal.filedByName || "Unknown"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Email:</span> <span className="font-medium text-gray-900">{complaintViewModal.filedByEmail || "-"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Phone:</span> <span className="font-medium text-gray-900">{complaintViewModal.filedByPhone || "-"}</span></p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-2">Other Party ({complaintViewModal.otherPartyRole || "User"})</h4>
+                    <p><span className="font-semibold text-gray-500">Name:</span> <span className="font-medium text-gray-900">{complaintViewModal.otherPartyName || "Unknown"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Email:</span> <span className="font-medium text-gray-900">{complaintViewModal.otherPartyEmail || "-"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Phone:</span> <span className="font-medium text-gray-900">{complaintViewModal.otherPartyPhone || "-"}</span></p>
+                  </div>
+                </div>
+
                 <div className="bg-gray-50 p-4 rounded-2xl">
-                  <p className="font-semibold mb-2">Description</p>
-                  <p>{complaintViewModal.description || "No description was provided."}</p>
+                  <p className="font-semibold text-gray-900 mb-2">Description</p>
+                  <p className="text-gray-600">{complaintViewModal.description || "No description was provided."}</p>
                 </div>
               </div>
               <div className="mt-6 flex justify-end">
@@ -1909,47 +1930,7 @@ const lineData = [
             </div>
           </div>
         )}
-        {/* Fraud Alerts */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Fraud Detection Alerts
-          </h2>
-          <div className="space-y-4">
-            <div className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat">
-              ⚠ Worker received 8 complaints this week.
-            </div>
-            <div className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat">
-              ⚠ Fake payment screenshot detected.
-            </div>
-            <div className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat">
-              ⚠ Multiple spam jobs reported.
-            </div>
-          </div>
-        </div>
-        {/* Chat Evidence */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Chat Evidence Review
-          </h2>
-          <div className="space-y-4">
-            <div className="bg-gray-100 p-4 rounded-2xl">
-              <p className="font-bold">
-                Client:
-              </p>
-              <p>
-                "The worker did not complete the job."
-              </p>
-            </div>
-            <div className="bg-orange-100 p-4 rounded-2xl">
-              <p className="font-bold">
-                Worker:
-              </p>
-              <p>
-                "I completed it yesterday."
-              </p>
-            </div>
-          </div>
-        </div>
+
       </div>
         );
       case "settings":
@@ -1964,62 +1945,109 @@ const lineData = [
             Admin Profile
           </h2>
           <div className="grid grid-cols-2 gap-6">
-            <input
-              value={adminName}
-              onChange={e => setAdminName(e.target.value)}
-              type="text"
-              placeholder="Admin Name"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <input
-              value={adminEmail}
-              onChange={e => setAdminEmail(e.target.value)}
-              type="email"
-              placeholder="Admin Email"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <input
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              type="password"
-              placeholder="New Password"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <input
-              value={profileImageUrl}
-              onChange={e => setProfileImageUrl(e.target.value)}
-              type="text"
-              placeholder="Profile Image URL (optional)"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Admin Name</label>
+              <input
+                value={adminName}
+                onChange={e => setAdminName(e.target.value)}
+                type="text"
+                placeholder="Admin Name"
+                className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Admin Email</label>
+              <input
+                value={adminEmail}
+                onChange={e => setAdminEmail(e.target.value)}
+                type="email"
+                placeholder="Admin Email"
+                className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+              />
+            </div>
           </div>
-          <div className="mt-4 flex items-center gap-3">
+
+          <div className="mt-8 border-t pt-6">
+            <h3 className="text-lg font-bold text-slate-800 mb-4">Change Password</h3>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Current Password</label>
+                <input
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                  type="password"
+                  placeholder="Current Password"
+                  className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">New Password</label>
+                <input
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  type="password"
+                  placeholder="New Password"
+                  className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Confirm New Password</label>
+                <input
+                  value={confirmNewPassword}
+                  onChange={e => setConfirmNewPassword(e.target.value)}
+                  type="password"
+                  placeholder="Confirm New Password"
+                  className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center gap-3">
             <button
               onClick={async () => {
+                if (newPassword || oldPassword || confirmNewPassword) {
+                  if (!oldPassword) {
+                    setMsg("Current password is required to change password");
+                    return;
+                  }
+                  if (!newPassword) {
+                    setMsg("New password is required");
+                    return;
+                  }
+                  if (newPassword !== confirmNewPassword) {
+                    setMsg("New passwords do not match");
+                    return;
+                  }
+                }
                 setSaving(true);
                 setMsg(null);
                 try {
                   const payload = {
                     fullName: adminName,
                     email: adminEmail,
-                    profileImageUrl: profileImageUrl,
                   };
-                  if (newPassword && newPassword.length > 0) payload.newPassword = newPassword;
+                  if (newPassword) {
+                    payload.newPassword = newPassword;
+                    payload.oldPassword = oldPassword;
+                  }
                   const updated = await api.updateProfile(payload);
-                  setMsg('Profile saved');
+                  setMsg('Profile saved successfully');
                   setNewPassword('');
+                  setOldPassword('');
+                  setConfirmNewPassword('');
                 } catch (e) {
                   setMsg(e.message || 'Save failed');
                 } finally {
                   setSaving(false);
                 }
               }}
-              className="bg-blue-500 text-white px-6 py-3 rounded-2xl"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold transition-colors"
               disabled={saving}
             >
               {saving ? 'Saving...' : 'Save Profile'}
             </button>
-            {msg && <p className="text-sm text-gray-600">{msg}</p>}
+            {msg && <p className="text-sm text-gray-600 font-medium">{msg}</p>}
           </div>
         </div>
         {/* System Settings */}
@@ -2030,46 +2058,15 @@ const lineData = [
           <div className="space-y-5">
             <div className="flex justify-between items-center">
               <p>Enable User Registrations</p>
-              <ToggleSwitch defaultChecked={true} />
+              <ToggleSwitch checked={enableUserRegistrations} onChange={(checked) => { setEnableUserRegistrations(checked); localStorage.setItem("enableUserRegistrations", checked); }} />
             </div>
             <div className="flex justify-between items-center">
               <p>Enable Worker Verification</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Enable Chat Monitoring</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Enable Fraud Detection</p>
-              <ToggleSwitch defaultChecked={true} />
+              <ToggleSwitch checked={enableWorkerVerification} onChange={(checked) => { setEnableWorkerVerification(checked); localStorage.setItem("enableWorkerVerification", checked); }} />
             </div>
           </div>
         </div>
-        {/* Security Settings */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Security Settings
-          </h2>
-          <div className="space-y-5">
-            <div className="flex justify-between items-center">
-              <p>Two-Factor Authentication</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Login Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Session Timeout</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Password Expiry</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-          </div>
-        </div>
+
         {/* Notifications */}
         <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
           <h2 className="text-2xl font-bold mb-6">
@@ -2078,60 +2075,32 @@ const lineData = [
           <div className="space-y-5">
             <div className="flex justify-between items-center">
               <p>Complaint Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Fraud Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
+              <ToggleSwitch
+                checked={complaintAlerts}
+                onChange={async (checked) => {
+                  setComplaintAlerts(checked);
+                  try {
+                    await api.updateProfile({ complaintAlerts: checked });
+                  } catch (e) {
+                    console.error("Failed to update complaint alerts setting", e);
+                  }
+                }}
+              />
             </div>
             <div className="flex justify-between items-center">
               <p>Worker Registration Alerts</p>
-              <ToggleSwitch defaultChecked={false} />
+              <ToggleSwitch
+                checked={workerRegistrationAlerts}
+                onChange={async (checked) => {
+                  setWorkerRegistrationAlerts(checked);
+                  try {
+                    await api.updateProfile({ workerRegistrationAlerts: checked });
+                  } catch (e) {
+                    console.error("Failed to update worker registration alerts setting", e);
+                  }
+                }}
+              />
             </div>
-            <div className="flex justify-between items-center">
-              <p>Payment Issue Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-          </div>
-        </div>
-        {/* Appearance */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Appearance Settings
-          </h2>
-          <div className="space-y-5">
-            <div className="flex justify-between items-center">
-              <p>Dark Mode</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Compact Sidebar</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Enable Animations</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-          </div>
-        </div>
-        {/* Platform Controls */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Platform Controls
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="bg-orange-500 text-white py-4 rounded-2xl">
-              Manage Categories
-            </button>
-            <button className="bg-blue-500 text-white py-4 rounded-2xl">
-              Manage Service Fees
-            </button>
-            <button className="bg-green-500 text-white py-4 rounded-2xl">
-              Export Reports
-            </button>
-            <button className="bg-red-500 text-white py-4 rounded-2xl">
-              Backup Database
-            </button>
           </div>
         </div>
         {/* Danger Zone */}
@@ -2206,16 +2175,6 @@ const lineData = [
               <span>💼</span> Job Management
             </button>
             <button
-              onClick={() => setActivePage("chat")}
-              className={`w-full text-left py-3 px-4 rounded-2xl text-sm font-semibold transition-all duration-150 flex items-center gap-3 ${
-                activePage === "chat"
-                  ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-                  : "hover:bg-slate-800/60 hover:text-white"
-              }`}
-            >
-              <span>💬</span> Chat Monitoring
-            </button>
-            <button
               onClick={() => setActivePage("analytics")}
               className={`w-full text-left py-3 px-4 rounded-2xl text-sm font-semibold transition-all duration-150 flex items-center gap-3 ${
                 activePage === "analytics"
@@ -2247,7 +2206,6 @@ const lineData = [
             </button>
           </nav>
         </div>
-        
         <button
           onClick={handleLogout}
           className="w-full text-left py-3 px-4 rounded-2xl text-sm font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-150 flex items-center gap-3"
