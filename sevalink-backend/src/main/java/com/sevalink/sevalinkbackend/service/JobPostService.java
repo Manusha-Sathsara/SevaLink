@@ -51,6 +51,9 @@ public class JobPostService {
     @Autowired
     private ComplaintRepository complaintRepository;
 
+    @Autowired
+    private EmailService emailService;
+
     // Client posts a new job
     public JobPost createJob(JobPost jobPost) {
         JobPost saved = jobPostRepository.save(jobPost);
@@ -475,6 +478,33 @@ public class JobPostService {
             }
         } catch (Exception e) {
             System.err.println("Failed to send complaint notification: " + e.getMessage());
+        }
+
+        // Send email to admin if configured
+        try {
+            java.util.List<User> admins = userRepository.findAllByRole(UserRole.ADMIN);
+            for (User admin : admins) {
+                if (admin.getComplaintAlerts() != null && admin.getComplaintAlerts()) {
+                    String subject = "SevaLink Admin - New Complaint Filed";
+                    String body = String.format(
+                        "Hello %s,\n\n" +
+                        "A new complaint has been filed on the SevaLink platform.\n\n" +
+                        "Job Details: %s\n" +
+                        "Filed By: %s (%s)\n" +
+                        "Description: %s\n\n" +
+                        "Please login to the Admin Dashboard to review this complaint.\n\n" +
+                        "Best regards,\nSevaLink System",
+                        admin.getFullName(),
+                        job.getTitle(),
+                        user.getFullName(),
+                        user.getEmail(),
+                        description
+                    );
+                    emailService.sendEmail(admin.getEmail(), subject, body);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to send complaint email alert: " + e.getMessage());
         }
 
         return saved;

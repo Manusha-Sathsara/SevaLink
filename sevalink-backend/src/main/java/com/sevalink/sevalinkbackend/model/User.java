@@ -49,6 +49,12 @@ public class User {
     private String profileImageUrl;
     private String location;
 
+    @Column(name = "complaint_alerts")
+    private Boolean complaintAlerts = true;
+
+    @Column(name = "worker_registration_alerts")
+    private Boolean workerRegistrationAlerts = true;
+
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 

@@ -15,4 +15,6 @@ public class UserDTO {
     private Boolean isPhoneVerified;
     private Boolean isEmailVerified;
     private Boolean isActive;
+    private Boolean complaintAlerts;
+    private Boolean workerRegistrationAlerts;
 }

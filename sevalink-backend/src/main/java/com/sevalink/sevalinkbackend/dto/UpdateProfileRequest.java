@@ -86,4 +86,23 @@ public class UpdateProfileRequest {
     public void setOldPassword(String oldPassword) {
         this.oldPassword = oldPassword;
     }
+
+    private Boolean complaintAlerts;
+    private Boolean workerRegistrationAlerts;
+
+    public Boolean getComplaintAlerts() {
+        return complaintAlerts;
+    }
+
+    public void setComplaintAlerts(Boolean complaintAlerts) {
+        this.complaintAlerts = complaintAlerts;
+    }
+
+    public Boolean getWorkerRegistrationAlerts() {
+        return workerRegistrationAlerts;
+    }
+
+    public void setWorkerRegistrationAlerts(Boolean workerRegistrationAlerts) {
+        this.workerRegistrationAlerts = workerRegistrationAlerts;
+    }
 }
