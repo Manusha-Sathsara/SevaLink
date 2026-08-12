@@ -1756,15 +1756,31 @@ const lineData = [
                 <button onClick={() => setComplaintViewModal(null)} className="text-gray-500 text-2xl">×</button>
               </div>
               <div className="space-y-3 text-sm text-gray-700">
-                <p><span className="font-semibold">Reported by:</span> {complaintViewModal.filedByName || "Unknown"}</p>
-                <p><span className="font-semibold">Email:</span> {complaintViewModal.filedByEmail || "-"}</p>
-                <p><span className="font-semibold">Category:</span> {complaintViewModal.category || "General"}</p>
-                <p><span className="font-semibold">Priority:</span> {complaintViewModal.priority || "Low"}</p>
-                <p><span className="font-semibold">Status:</span> {complaintViewModal.status || "Pending"}</p>
-                <p><span className="font-semibold">Created:</span> {complaintViewModal.createdAt ? new Date(complaintViewModal.createdAt).toLocaleString() : "-"}</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <p><span className="font-semibold text-gray-500">Category:</span> <span className="font-medium text-gray-900">{complaintViewModal.category || "General"}</span></p>
+                  <p><span className="font-semibold text-gray-500">Priority:</span> <span className="font-medium text-gray-900">{complaintViewModal.priority || "Low"}</span></p>
+                  <p><span className="font-semibold text-gray-500">Status:</span> <span className="font-medium text-gray-900">{complaintViewModal.status || "Pending"}</span></p>
+                  <p><span className="font-semibold text-gray-500">Created:</span> <span className="font-medium text-gray-900">{complaintViewModal.createdAt ? new Date(complaintViewModal.createdAt).toLocaleString() : "-"}</span></p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 border-t border-b border-gray-100 py-4 my-2">
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-2">Complainer ({complaintViewModal.filedByRole || "User"})</h4>
+                    <p><span className="font-semibold text-gray-500">Name:</span> <span className="font-medium text-gray-900">{complaintViewModal.filedByName || "Unknown"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Email:</span> <span className="font-medium text-gray-900">{complaintViewModal.filedByEmail || "-"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Phone:</span> <span className="font-medium text-gray-900">{complaintViewModal.filedByPhone || "-"}</span></p>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-2">Other Party ({complaintViewModal.otherPartyRole || "User"})</h4>
+                    <p><span className="font-semibold text-gray-500">Name:</span> <span className="font-medium text-gray-900">{complaintViewModal.otherPartyName || "Unknown"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Email:</span> <span className="font-medium text-gray-900">{complaintViewModal.otherPartyEmail || "-"}</span></p>
+                    <p><span className="font-semibold text-gray-500">Phone:</span> <span className="font-medium text-gray-900">{complaintViewModal.otherPartyPhone || "-"}</span></p>
+                  </div>
+                </div>
+
                 <div className="bg-gray-50 p-4 rounded-2xl">
-                  <p className="font-semibold mb-2">Description</p>
-                  <p>{complaintViewModal.description || "No description was provided."}</p>
+                  <p className="font-semibold text-gray-900 mb-2">Description</p>
+                  <p className="text-gray-600">{complaintViewModal.description || "No description was provided."}</p>
                 </div>
               </div>
               <div className="mt-6 flex justify-end">

@@ -2,7 +2,10 @@ package com.sevalink.sevalinkbackend.service;
 
 import com.sevalink.sevalinkbackend.dto.AdminComplaintDto;
 import com.sevalink.sevalinkbackend.model.Complaint;
+import com.sevalink.sevalinkbackend.model.User;
+import com.sevalink.sevalinkbackend.model.Quotation;
 import com.sevalink.sevalinkbackend.repository.ComplaintRepository;
+import com.sevalink.sevalinkbackend.repository.QuotationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +18,9 @@ public class AdminComplaintService {
 
     @Autowired
     private ComplaintRepository complaintRepository;
+
+    @Autowired
+    private QuotationRepository quotationRepository;
 
     public List<AdminComplaintDto> getAdminComplaints() {
         return complaintRepository.findAll().stream()
@@ -46,12 +52,53 @@ public class AdminComplaintService {
             resolvedStatus = priority.equals("High") ? "Investigating" : "Pending";
         }
 
+        String filedByPhone = "";
+        String filedByRole = "";
+        String otherPartyName = "Unknown";
+        String otherPartyEmail = "";
+        String otherPartyPhone = "";
+        String otherPartyRole = "";
+
+        if (complaint.getFiledBy() != null) {
+            filedByPhone = complaint.getFiledBy().getPhoneNumber() != null ? complaint.getFiledBy().getPhoneNumber() : "";
+            filedByRole = complaint.getFiledBy().getRole() != null ? complaint.getFiledBy().getRole().name() : "";
+
+            if (complaint.getJobPost() != null) {
+                if (com.sevalink.sevalinkbackend.model.UserRole.CLIENT.equals(complaint.getFiledBy().getRole())) {
+                    otherPartyRole = "WORKER";
+                    Quotation acceptedQuote = quotationRepository
+                            .findByJobPostIdAndStatus(complaint.getJobPost().getId(), "ACCEPTED")
+                            .orElse(null);
+                    if (acceptedQuote != null && acceptedQuote.getWorker() != null && acceptedQuote.getWorker().getUser() != null) {
+                        User workerUser = acceptedQuote.getWorker().getUser();
+                        otherPartyName = workerUser.getFullName();
+                        otherPartyEmail = workerUser.getEmail();
+                        otherPartyPhone = workerUser.getPhoneNumber();
+                    }
+                } else if (com.sevalink.sevalinkbackend.model.UserRole.WORKER.equals(complaint.getFiledBy().getRole())) {
+                    otherPartyRole = "CLIENT";
+                    User clientUser = complaint.getJobPost().getClient();
+                    if (clientUser != null) {
+                        otherPartyName = clientUser.getFullName();
+                        otherPartyEmail = clientUser.getEmail();
+                        otherPartyPhone = clientUser.getPhoneNumber();
+                    }
+                }
+            }
+        }
+
         return AdminComplaintDto.builder()
                 .id(complaint.getId())
                 .jobId(complaint.getJobPost() != null ? complaint.getJobPost().getId() : null)
                 .jobTitle(complaint.getJobPost() != null ? complaint.getJobPost().getTitle() : "Unknown job")
                 .filedByName(complaint.getFiledBy() != null ? complaint.getFiledBy().getFullName() : "Unknown")
                 .filedByEmail(complaint.getFiledBy() != null ? complaint.getFiledBy().getEmail() : "")
+                .filedByPhone(filedByPhone)
+                .filedByRole(filedByRole)
+                .otherPartyName(otherPartyName)
+                .otherPartyEmail(otherPartyEmail)
+                .otherPartyPhone(otherPartyPhone)
+                .otherPartyRole(otherPartyRole)
                 .description(description)
                 .category(category)
                 .priority(priority)

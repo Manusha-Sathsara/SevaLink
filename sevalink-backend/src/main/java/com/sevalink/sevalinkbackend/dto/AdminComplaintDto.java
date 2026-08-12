@@ -13,6 +13,12 @@ public class AdminComplaintDto {
     private String jobTitle;
     private String filedByName;
     private String filedByEmail;
+    private String filedByPhone;
+    private String filedByRole;
+    private String otherPartyName;
+    private String otherPartyEmail;
+    private String otherPartyPhone;
+    private String otherPartyRole;
     private String description;
     private String category;
     private String priority;
