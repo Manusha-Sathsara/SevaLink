@@ -5,8 +5,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/themes/app_theme.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/auth_button.dart';
-import '../widgets/social_auth_divider.dart';
-import '../widgets/social_auth_button.dart';
 import '../../../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -158,24 +156,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   text: 'Sign In',
                   isLoading: authState.isLoading,
                   onPressed: _handleLogin,
-                ),
-                const SizedBox(height: 32),
-                const SocialAuthDivider(),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    SocialAuthButton(
-                      text: 'Google',
-                      icon: LucideIcons.chrome, // Placeholder for google icon
-                      onPressed: () {},
-                    ),
-                    const SizedBox(width: 16),
-                    SocialAuthButton(
-                      text: 'Facebook',
-                      icon: LucideIcons.facebook,
-                      onPressed: () {},
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 32),
                 Row(
