@@ -29,6 +29,12 @@ function App({ onLogout }) {
     onlineUsers: 0,
   });
   const [workers, setWorkers] = useState([]);
+  const [enableUserRegistrations, setEnableUserRegistrations] = useState(() => {
+    return localStorage.getItem("enableUserRegistrations") !== "false";
+  });
+  const [enableWorkerVerification, setEnableWorkerVerification] = useState(() => {
+    return localStorage.getItem("enableWorkerVerification") !== "false";
+  });
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -442,12 +448,10 @@ const lineData = [
     }
   };
   // ================= DASHBOARD =================
-  
   // ================= TOGGLE SWITCH COMPONENT =================
   const ToggleSwitch = ({ checked, onChange, defaultChecked }) => {
     const [internalChecked, setInternalChecked] = React.useState(defaultChecked || false);
     const isChecked = checked !== undefined ? checked : internalChecked;
-    
     const handleToggle = () => {
       if (onChange) {
         onChange(!isChecked);
@@ -1181,7 +1185,6 @@ const lineData = [
             <h1 className="text-5xl font-bold text-red-500 mt-3">{jobs.filter(j=> j.status === 'CANCELLED' || j.status === 'Cancelled').length}</h1>
           </div>
         </div>
-   
         {/* Search */}
         <div className="flex gap-4 mb-6">
           <input
@@ -1399,7 +1402,6 @@ const lineData = [
         )}
       </div>
         );
-      
       case "analytics":
         return (
           <div className="flex-1 p-8 overflow-y-auto">
@@ -1977,16 +1979,11 @@ const lineData = [
           <div className="space-y-5">
             <div className="flex justify-between items-center">
               <p>Enable User Registrations</p>
-              <ToggleSwitch defaultChecked={true} />
+              <ToggleSwitch checked={enableUserRegistrations} onChange={(checked) => { setEnableUserRegistrations(checked); localStorage.setItem("enableUserRegistrations", checked); }} />
             </div>
             <div className="flex justify-between items-center">
               <p>Enable Worker Verification</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <p>Enable Fraud Detection</p>
-              <ToggleSwitch defaultChecked={true} />
+              <ToggleSwitch checked={enableWorkerVerification} onChange={(checked) => { setEnableWorkerVerification(checked); localStorage.setItem("enableWorkerVerification", checked); }} />
             </div>
           </div>
         </div>
@@ -2038,7 +2035,6 @@ const lineData = [
             </div>
           </div>
         </div>
-
         {/* Danger Zone */}
         <div className="bg-white rounded-3xl shadow-md p-6 border border-red-500">
           <h2 className="text-2xl font-bold text-red-500 mb-6">
@@ -2110,7 +2106,6 @@ const lineData = [
             >
               <span>💼</span> Job Management
             </button>
-            
             <button
               onClick={() => setActivePage("analytics")}
               className={`w-full text-left py-3 px-4 rounded-2xl text-sm font-semibold transition-all duration-150 flex items-center gap-3 ${
@@ -2143,7 +2138,6 @@ const lineData = [
             </button>
           </nav>
         </div>
-        
         <button
           onClick={handleLogout}
           className="w-full text-left py-3 px-4 rounded-2xl text-sm font-semibold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-150 flex items-center gap-3"
