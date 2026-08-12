@@ -18,7 +18,9 @@ import {
 function App({ onLogout }) {
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -1913,62 +1915,109 @@ const lineData = [
             Admin Profile
           </h2>
           <div className="grid grid-cols-2 gap-6">
-            <input
-              value={adminName}
-              onChange={e => setAdminName(e.target.value)}
-              type="text"
-              placeholder="Admin Name"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <input
-              value={adminEmail}
-              onChange={e => setAdminEmail(e.target.value)}
-              type="email"
-              placeholder="Admin Email"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <input
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              type="password"
-              placeholder="New Password"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <input
-              value={profileImageUrl}
-              onChange={e => setProfileImageUrl(e.target.value)}
-              type="text"
-              placeholder="Profile Image URL (optional)"
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Admin Name</label>
+              <input
+                value={adminName}
+                onChange={e => setAdminName(e.target.value)}
+                type="text"
+                placeholder="Admin Name"
+                className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Admin Email</label>
+              <input
+                value={adminEmail}
+                onChange={e => setAdminEmail(e.target.value)}
+                type="email"
+                placeholder="Admin Email"
+                className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+              />
+            </div>
           </div>
-          <div className="mt-4 flex items-center gap-3">
+
+          <div className="mt-8 border-t pt-6">
+            <h3 className="text-lg font-bold text-slate-800 mb-4">Change Password</h3>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Current Password</label>
+                <input
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                  type="password"
+                  placeholder="Current Password"
+                  className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">New Password</label>
+                <input
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  type="password"
+                  placeholder="New Password"
+                  className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Confirm New Password</label>
+                <input
+                  value={confirmNewPassword}
+                  onChange={e => setConfirmNewPassword(e.target.value)}
+                  type="password"
+                  placeholder="Confirm New Password"
+                  className="w-full bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-slate-300 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center gap-3">
             <button
               onClick={async () => {
+                if (newPassword || oldPassword || confirmNewPassword) {
+                  if (!oldPassword) {
+                    setMsg("Current password is required to change password");
+                    return;
+                  }
+                  if (!newPassword) {
+                    setMsg("New password is required");
+                    return;
+                  }
+                  if (newPassword !== confirmNewPassword) {
+                    setMsg("New passwords do not match");
+                    return;
+                  }
+                }
                 setSaving(true);
                 setMsg(null);
                 try {
                   const payload = {
                     fullName: adminName,
                     email: adminEmail,
-                    profileImageUrl: profileImageUrl,
                   };
-                  if (newPassword && newPassword.length > 0) payload.newPassword = newPassword;
+                  if (newPassword) {
+                    payload.newPassword = newPassword;
+                    payload.oldPassword = oldPassword;
+                  }
                   const updated = await api.updateProfile(payload);
-                  setMsg('Profile saved');
+                  setMsg('Profile saved successfully');
                   setNewPassword('');
+                  setOldPassword('');
+                  setConfirmNewPassword('');
                 } catch (e) {
                   setMsg(e.message || 'Save failed');
                 } finally {
                   setSaving(false);
                 }
               }}
-              className="bg-blue-500 text-white px-6 py-3 rounded-2xl"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-2xl font-semibold transition-colors"
               disabled={saving}
             >
               {saving ? 'Saving...' : 'Save Profile'}
             </button>
-            {msg && <p className="text-sm text-gray-600">{msg}</p>}
+            {msg && <p className="text-sm text-gray-600 font-medium">{msg}</p>}
           </div>
         </div>
         {/* System Settings */}

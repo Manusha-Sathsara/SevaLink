@@ -251,6 +251,12 @@ public class AuthService {
 
         // Change password if requested
         if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            if (request.getOldPassword() == null || request.getOldPassword().isBlank()) {
+                throw new RuntimeException("Current password is required to change password");
+            }
+            if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+                throw new RuntimeException("Current password is incorrect");
+            }
             user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         }
 
