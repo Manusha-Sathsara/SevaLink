@@ -18,6 +18,8 @@ import {
 function App({ onLogout }) {
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [complaintAlerts, setComplaintAlerts] = useState(true);
+  const [workerRegistrationAlerts, setWorkerRegistrationAlerts] = useState(true);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -71,6 +73,8 @@ function App({ onLogout }) {
         setAdminName(user.fullName || "");
         setAdminEmail(user.email || "");
         setProfileImageUrl(user.profileImageUrl || "");
+        setComplaintAlerts(user.complaintAlerts !== false);
+        setWorkerRegistrationAlerts(user.workerRegistrationAlerts !== false);
       }
     }).catch(() => {});
     api.getAdminDashboardStats()
@@ -2045,19 +2049,31 @@ const lineData = [
           <div className="space-y-5">
             <div className="flex justify-between items-center">
               <p>Complaint Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Fraud Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
+              <ToggleSwitch
+                checked={complaintAlerts}
+                onChange={async (checked) => {
+                  setComplaintAlerts(checked);
+                  try {
+                    await api.updateProfile({ complaintAlerts: checked });
+                  } catch (e) {
+                    console.error("Failed to update complaint alerts setting", e);
+                  }
+                }}
+              />
             </div>
             <div className="flex justify-between items-center">
               <p>Worker Registration Alerts</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Payment Issue Alerts</p>
-              <ToggleSwitch defaultChecked={true} />
+              <ToggleSwitch
+                checked={workerRegistrationAlerts}
+                onChange={async (checked) => {
+                  setWorkerRegistrationAlerts(checked);
+                  try {
+                    await api.updateProfile({ workerRegistrationAlerts: checked });
+                  } catch (e) {
+                    console.error("Failed to update worker registration alerts setting", e);
+                  }
+                }}
+              />
             </div>
           </div>
         </div>
