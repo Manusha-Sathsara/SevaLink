@@ -2038,46 +2038,7 @@ const lineData = [
             </div>
           </div>
         </div>
-        {/* Appearance */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Appearance Settings
-          </h2>
-          <div className="space-y-5">
-            <div className="flex justify-between items-center">
-              <p>Dark Mode</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Compact Sidebar</p>
-              <ToggleSwitch defaultChecked={false} />
-            </div>
-            <div className="flex justify-between items-center">
-              <p>Enable Animations</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
-          </div>
-        </div>
-        {/* Platform Controls */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold mb-6">
-            Platform Controls
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="bg-orange-500 text-white py-4 rounded-2xl">
-              Manage Categories
-            </button>
-            <button className="bg-blue-500 text-white py-4 rounded-2xl">
-              Manage Service Fees
-            </button>
-            <button className="bg-green-500 text-white py-4 rounded-2xl">
-              Export Reports
-            </button>
-            <button className="bg-red-500 text-white py-4 rounded-2xl">
-              Backup Database
-            </button>
-          </div>
-        </div>
+
         {/* Danger Zone */}
         <div className="bg-white rounded-3xl shadow-md p-6 border border-red-500">
           <h2 className="text-2xl font-bold text-red-500 mb-6">
