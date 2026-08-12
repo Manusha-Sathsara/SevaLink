@@ -85,7 +85,6 @@ function App({ onLogout }) {
       console.error("Unable to update worker status", error);
     }
   };
-
   const handleVerifySubmit = async (e) => {
     e.preventDefault();
     if (!selectedWorker || !nicNumber || !verificationDocument || !policeReport) {
@@ -104,7 +103,6 @@ function App({ onLogout }) {
       alert(error.message || "Failed to verify worker.");
     }
   };
-
   const handleRejectSubmit = async (e) => {
     e.preventDefault();
     if (!selectedWorker || !rejectionReason) {
@@ -1401,58 +1399,7 @@ const lineData = [
         )}
       </div>
         );
-      case "chat":
-        return (
-          <div className="flex-1 flex flex-col">
-          {/* Top */}
-          <div className="bg-white p-5 border-b">
-            <h1 className="text-2xl font-bold">
-              Job #5678
-            </h1>
-            <p className="text-gray-500">
-              Nimal Fernando & Sunil Perera
-            </p>
-          </div>
-          {/* Messages */}
-          <div className="flex-1 p-6 space-y-5 overflow-y-auto">
-            <div className="flex justify-start">
-              <div className="bg-gray-300 px-5 py-3 rounded-2xl max-w-sm">
-<div>
-  <p>When can you come?</p>
-  <span className="text-xs text-gray-500">
-    2:45 PM
-  </span>
-</div>              </div>
-            </div>
-            <div className="flex justify-end">
-              <div className="bg-orange-500 text-white px-5 py-3 rounded-2xl max-w-sm">
-                I can come by 3 PM today.
-              </div>
-            </div>
-            <div className="flex justify-start">
-              <div className="bg-gray-300 px-5 py-3 rounded-2xl max-w-sm">
-                Please bring materials.
-                <div className="flex justify-start">
-  <div className="bg-red-500 text-white px-5 py-3 rounded-2xl max-w-sm">
-    ⚠ Abusive Message Detected
-  </div>
-</div>
-              </div>
-            </div>
-          </div>
-          {/* Bottom Input */}
-          <div className="bg-white p-4 border-t flex gap-4">
-            <input
-              type="text"
-              placeholder="Type message..."
-              className="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-all appearance-none pr-10 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5%201.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.75em_auto] bg-[right_1rem_center] bg-no-repeat"
-            />
-            <button className="bg-orange-500 text-white px-6 rounded-2xl">
-              Send
-            </button>
-          </div>
-        </div>
-        );
+      
       case "analytics":
         return (
           <div className="flex-1 p-8 overflow-y-auto">
@@ -2036,10 +1983,7 @@ const lineData = [
               <p>Enable Worker Verification</p>
               <ToggleSwitch defaultChecked={true} />
             </div>
-            <div className="flex justify-between items-center">
-              <p>Enable Chat Monitoring</p>
-              <ToggleSwitch defaultChecked={true} />
-            </div>
+            
             <div className="flex justify-between items-center">
               <p>Enable Fraud Detection</p>
               <ToggleSwitch defaultChecked={true} />
@@ -2205,16 +2149,7 @@ const lineData = [
             >
               <span>💼</span> Job Management
             </button>
-            <button
-              onClick={() => setActivePage("chat")}
-              className={`w-full text-left py-3 px-4 rounded-2xl text-sm font-semibold transition-all duration-150 flex items-center gap-3 ${
-                activePage === "chat"
-                  ? "bg-orange-500 text-white shadow-md shadow-orange-500/20"
-                  : "hover:bg-slate-800/60 hover:text-white"
-              }`}
-            >
-              <span>💬</span> Chat Monitoring
-            </button>
+            
             <button
               onClick={() => setActivePage("analytics")}
               className={`w-full text-left py-3 px-4 rounded-2xl text-sm font-semibold transition-all duration-150 flex items-center gap-3 ${
