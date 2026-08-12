@@ -237,33 +237,6 @@ class _MyJobsScreenState extends ConsumerState<MyJobsScreen>
   List<WorkerJob> _byStatus(List<WorkerJob> all, JobStatus s) =>
       all.where((j) => j.status == s).toList();
 
-  void _handleMarkDone(String id) {
-    ref.read(workerJobsListProvider.notifier).markDone(id);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('Job marked as done!',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-          ],
-        ),
-        backgroundColor: const Color(0xFF0F9B8E),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    // Animate to Completed tab after short delay
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) _tabController.animateTo(1);
-    });
-  }
-
   Widget _buildErrorView(String errorMsg) {
     final colors = Theme.of(context).extension<SevaLinkColors>()!;
     return Center(
@@ -492,13 +465,11 @@ class _MyJobsScreenState extends ConsumerState<MyJobsScreen>
 class _JobList extends StatelessWidget {
   final List<WorkerJob> jobs;
   final String emptyLabel;
-  final void Function(String id)? onMarkDone;
   final RefreshCallback? onRefresh;
 
   const _JobList({
     required this.jobs,
     required this.emptyLabel,
-    this.onMarkDone,
     this.onRefresh,
   });
 
@@ -538,8 +509,6 @@ class _JobList extends StatelessWidget {
             },
             child: _JobCard(
               job: job,
-              onMarkDone:
-                  onMarkDone == null ? null : () => onMarkDone!(job.id),
             ),
           );
         },
@@ -561,8 +530,7 @@ class _JobList extends StatelessWidget {
 
 class _JobCard extends StatelessWidget {
   final WorkerJob job;
-  final VoidCallback? onMarkDone;
-  const _JobCard({required this.job, this.onMarkDone});
+  const _JobCard({required this.job});
 
   Color get _statusColor {
     switch (job.status) {

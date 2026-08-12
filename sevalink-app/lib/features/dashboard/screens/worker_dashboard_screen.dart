@@ -6,7 +6,6 @@ import '../../../providers/auth_provider.dart';
 import '../../../data/models/job.dart';
 import '../../worker/screens/job_details_screen.dart';
 import '../../../core/themes/app_theme.dart';
-import '../../../data/models/notification_model.dart';
 import '../../../providers/notification_provider.dart';
 import '../widgets/notifications_drawer.dart';
 
