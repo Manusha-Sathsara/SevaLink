@@ -51,35 +51,35 @@ function Login() {
   <div className="absolute inset-0 bg-black/50"></div>
 
   {/* LOGIN CARD */}
- <div className="relative z-10 w-[380px] max-h-[calc(100vh-4rem)] overflow-y-auto bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl px-7 py-6 shadow-2xl">
+ <div className="relative z-10 w-[380px] bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl px-7 py-6 shadow-2xl">
 
     {/* LOGO */}
-    <div className="flex flex-col items-center mb-2">
+    <div className="flex flex-col items-center mb-1">
 
       <img
         src={logo}
         alt="logo"
-        className="w-28 h-28 object-contain mb-3"
+        className="w-20 h-20 object-contain mb-1"
       />
 
-      <h1 className="text-2xl font-extrabold text-white -mt-4">
+      <h1 className="text-2xl font-extrabold text-white -mt-2">
         SevaLink
       </h1>
 
-      <p className="text-orange-300 tracking-[3px] text-sm mt-1">
+      <p className="text-orange-300 tracking-[3px] text-xs mt-0.5">
         ADMIN PANEL
       </p>
 
     </div>
 
     {/* WELCOME */}
-    <div className="text-center mb-2">
+    <div className="text-center mb-1">
 
-      <h2 className="text-2xl font-bold text-white mb-2">
+      <h2 className="text-xl font-bold text-white mb-1">
         Welcome Back
       </h2>
 
-      <p className="text-gray-300 text-sm leading-5 mx-auto max-w-[280px]">
+      <p className="text-gray-300 text-xs leading-5 mx-auto max-w-[280px]">
         Manage workers, bookings, analytics,
         communication, and platform operations.
       </p>
