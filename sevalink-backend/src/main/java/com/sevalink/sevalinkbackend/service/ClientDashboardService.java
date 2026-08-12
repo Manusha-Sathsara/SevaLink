@@ -20,22 +20,28 @@ public class ClientDashboardService {
 
     public ClientDashboardResponse getDashboardData() {
         List<Worker> topWorkers = workerRepository.findTop10ByIsAvailableTrueAndStatusOrderByRatingDesc(WorkerStatus.VERIFIED);
+        if (topWorkers.isEmpty()) {
+            topWorkers = workerRepository.findAll();
+            if (topWorkers.size() > 10) {
+                topWorkers = topWorkers.subList(0, 10);
+            }
+        }
 
         List<WorkerProfileDto> workerDtos = topWorkers.stream().map(worker -> {
             String name = (worker.getUser() != null && worker.getUser().getFullName() != null) 
-                    ? worker.getUser().getFullName() : "Unknown";
-            String profession = (worker.getCategory() != null) 
+                    ? worker.getUser().getFullName() : "Unknown Worker";
+            String profession = (worker.getCategory() != null && worker.getCategory().getName() != null) 
                     ? worker.getCategory().getName() : "General";
-            String imageUrl = null; // User model does not have profilePictureUrl
+            String imageUrl = (worker.getUser() != null) ? worker.getUser().getProfileImageUrl() : null;
 
             return WorkerProfileDto.builder()
                     .id(worker.getId())
                     .name(name)
                     .profession(profession)
-                    .hourlyRate(worker.getHourlyRate())
-                    .rating(worker.getRating())
-                    .reviewCount(worker.getTotalJobs()) // using totalJobs as proxy for reviewCount for now
-                    .isVerified(worker.getUser() != null && (worker.getUser().getIsPhoneVerified() || worker.getUser().getIsEmailVerified()))
+                    .hourlyRate(worker.getHourlyRate() != null ? worker.getHourlyRate() : 1000.0)
+                    .rating(worker.getRating() != null && worker.getRating() > 0 ? worker.getRating() : 5.0)
+                    .reviewCount(worker.getTotalReviews() != null && worker.getTotalReviews() > 0 ? worker.getTotalReviews() : worker.getTotalJobs())
+                    .isVerified(WorkerStatus.VERIFIED.equals(worker.getStatus()))
                     .imageUrl(imageUrl)
                     .build();
         }).collect(Collectors.toList());
