@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import '../../../providers/client_profile_provider.dart';
+import '../../../providers/auth_provider.dart';
 
 class EditClientProfileScreen extends ConsumerStatefulWidget {
   const EditClientProfileScreen({super.key});
@@ -18,7 +19,6 @@ class _EditClientProfileScreenState extends ConsumerState<EditClientProfileScree
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  late TextEditingController _locationController;
   bool _isLoading = false;
   File? _profileImage;
   bool _isUploadingProfileImage = false;
@@ -29,14 +29,12 @@ class _EditClientProfileScreenState extends ConsumerState<EditClientProfileScree
     _nameController = TextEditingController();
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
-    _locationController = TextEditingController();
 
     final profileState = ref.read(clientProfileProvider);
     profileState.whenData((profile) {
       _nameController.text = profile.fullName;
       _emailController.text = profile.email;
       _phoneController.text = profile.phoneNumber;
-      _locationController.text = profile.location ?? '';
     });
   }
 
@@ -45,7 +43,6 @@ class _EditClientProfileScreenState extends ConsumerState<EditClientProfileScree
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _locationController.dispose();
     super.dispose();
   }
 
@@ -109,10 +106,13 @@ class _EditClientProfileScreenState extends ConsumerState<EditClientProfileScree
 
     setState(() => _isLoading = true);
     try {
+      final currentLocation = ref.read(clientProfileProvider).asData?.value.location 
+          ?? ref.read(authProvider).profileExtra.location;
+
       await ref.read(clientProfileProvider.notifier).updateProfile(
             fullName: _nameController.text.trim(),
             phoneNumber: _phoneController.text.trim(),
-            location: _locationController.text.trim(),
+            location: currentLocation,
           );
 
       if (mounted) {
@@ -349,13 +349,6 @@ class _EditClientProfileScreenState extends ConsumerState<EditClientProfileScree
                               }
                               return null;
                             },
-                          ),
-                          const Divider(height: 24),
-                          _buildFormField(
-                            icon: Icons.location_on_outlined,
-                            label: 'Location',
-                            controller: _locationController,
-                            validator: (val) => val == null || val.isEmpty ? 'Location is required' : null,
                           ),
                         ],
                       ),
