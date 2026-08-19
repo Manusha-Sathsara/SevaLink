@@ -8,6 +8,7 @@ import '../../../data/models/job.dart';
 import '../../../core/themes/app_theme.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/worker_feed_provider.dart';
+import '../../../core/utils/location_helper.dart';
 
 class SendQuoteScreen extends ConsumerStatefulWidget {
   final Job job;
@@ -277,9 +278,14 @@ class _SendQuoteScreenState extends ConsumerState<SendQuoteScreen>
               const Icon(Icons.location_on_outlined,
                   color: Colors.white60, size: 14),
               const SizedBox(width: 4),
-              Text(widget.job.location,
+              Expanded(
+                child: Text(
+                  getApproximateLocation(widget.job.location) + (widget.job.distanceKm != null ? ' • ${widget.job.distanceKm!.toStringAsFixed(1)} km' : ''),
                   style: const TextStyle(
-                      color: Colors.white70, fontSize: 13)),
+                      color: Colors.white70, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               const Spacer(),
               const Icon(Icons.access_time_rounded,
                   color: Colors.white60, size: 14),

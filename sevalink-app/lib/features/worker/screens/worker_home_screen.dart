@@ -428,7 +428,7 @@ class _Header extends ConsumerWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            stats.location.isNotEmpty ? stats.location : 'Set Location',
+                            stats.location.isNotEmpty ? getApproximateLocation(stats.location) : 'Set Location',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
@@ -792,7 +792,7 @@ class _JobCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                      job.location + (job.distanceKm != null ? ' (${job.distanceKm!.toStringAsFixed(1)} km)' : ''),
+                      getApproximateLocation(job.location) + (job.distanceKm != null ? ' • ${job.distanceKm!.toStringAsFixed(1)} km' : ''),
                       style: TextStyle(
                           color: colors.textSecondary, fontSize: 12),
                       overflow: TextOverflow.ellipsis),

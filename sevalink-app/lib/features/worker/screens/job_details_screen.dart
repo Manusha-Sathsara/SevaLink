@@ -1,30 +1,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../data/models/job.dart';
 import '../../../core/themes/app_theme.dart';
+import '../../../core/utils/location_helper.dart';
 
 class JobDetailsScreen extends StatelessWidget {
   final Job job;
 
   const JobDetailsScreen({super.key, required this.job});
-
-  Future<void> _openMap(String location, BuildContext context) async {
-    final Uri mapUrl = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(location)}');
-    try {
-      await launchUrl(mapUrl, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open map: $e')),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,64 +43,82 @@ class JobDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () => _openMap(job.location, context),
-                    child: _buildSection(
-                      context: context,
-                      title: 'Location',
-                      icon: Icons.location_on_outlined,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE8F5F2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.map_outlined,
-                                    color: Color(0xFF054A29), size: 22),
+                  _buildSection(
+                    context: context,
+                    title: 'Location & Proximity',
+                    icon: Icons.location_on_outlined,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8F5F2),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(width: 12),
+                              child: const Icon(Icons.location_city_rounded,
+                                  color: Color(0xFF054A29), size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    getApproximateLocation(job.location),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: (Theme.of(context).extension<SevaLinkColors>() ?? SevaLinkColors.light).textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    job.distanceKm != null
+                                        ? 'Approx. ${job.distanceKm!.toStringAsFixed(1)} km from your location'
+                                        : 'General vicinity',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF054A29).withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFF054A29).withValues(alpha: 0.15),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.lock_outline_rounded, size: 18, color: Color(0xFF054A29)),
+                              const SizedBox(width: 10),
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      job.location,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: (Theme.of(context).extension<SevaLinkColors>() ?? SevaLinkColors.light).textPrimary,
-                                      ),
-                                    ),
-                                    if (job.distanceKm != null) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${job.distanceKm!.toStringAsFixed(1)} km away from you',
-                                        style: const TextStyle(
-                                            fontSize: 13, color: Colors.grey),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      'Tap to view on full map',
-                                      style: TextStyle(
-                                          fontSize: 13, color: Color(0xFF054A29)),
-                                    ),
-                                  ],
+                                child: Text(
+                                  'Exact address & navigation route will be unlocked once your quotation is accepted by the client.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: const Color(0xFF054A29).withValues(alpha: 0.9),
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          AbsorbPointer(
-                            child: _EmbeddedMap(location: job.location),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -243,7 +245,7 @@ class JobDetailsScreen extends StatelessWidget {
           child: _buildChip(
               context,
               Icons.location_on_outlined,
-              job.location + (job.distanceKm != null ? ' (${job.distanceKm!.toStringAsFixed(1)} km)' : ''),
+              getApproximateLocation(job.location) + (job.distanceKm != null ? ' • ${job.distanceKm!.toStringAsFixed(1)} km' : ''),
               const Color(0xFF2A9134)),
         ),
         const SizedBox(width: 10),
@@ -588,108 +590,6 @@ class JobDetailsScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _EmbeddedMap extends StatefulWidget {
-  final String location;
-  const _EmbeddedMap({required this.location});
-
-  @override
-  State<_EmbeddedMap> createState() => _EmbeddedMapState();
-}
-
-class _EmbeddedMapState extends State<_EmbeddedMap> {
-  LatLng? _target;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCoordinates();
-  }
-
-  Future<void> _loadCoordinates() async {
-    try {
-      final locations = await locationFromAddress(widget.location);
-      if (locations.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _target = LatLng(locations.first.latitude, locations.first.longitude);
-            _isLoading = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const SizedBox(
-        height: 150,
-        child: Center(child: CircularProgressIndicator(color: Color(0xFF054A29))),
-      );
-    }
-    
-    if (_target == null) {
-      return SizedBox(
-        height: 150,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.location_off_rounded, color: Colors.grey, size: 30),
-              const SizedBox(height: 8),
-              Text(
-                'Could not load map for ${widget.location}',
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: _target!, zoom: 14),
-          myLocationButtonEnabled: false,
-          zoomControlsEnabled: false,
-          markers: {
-            Marker(
-              markerId: const MarkerId('job_location'),
-              position: _target!,
-            )
-          },
-        ),
       ),
     );
   }

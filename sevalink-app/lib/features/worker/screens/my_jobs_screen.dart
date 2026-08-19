@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/themes/app_theme.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/worker_feed_provider.dart';
+import '../../../core/utils/location_helper.dart';
 
 // ─── Enums & Model ────────────────────────────────────────────────────────────
 
@@ -645,7 +646,7 @@ class _JobCard extends StatelessWidget {
             // Details
             _infoRow(Icons.person_outline_rounded, job.clientName, colors),
             const SizedBox(height: 6),
-            _infoRow(Icons.location_on_outlined, job.location + (job.distanceKm != null ? ' (${job.distanceKm!.toStringAsFixed(1)} km)' : ''), colors),
+            _infoRow(Icons.location_on_outlined, getApproximateLocation(job.location) + (job.distanceKm != null ? ' • ${job.distanceKm!.toStringAsFixed(1)} km' : ''), colors),
             const SizedBox(height: 6),
             _infoRow(Icons.calendar_today_outlined, job.date, colors),
 
