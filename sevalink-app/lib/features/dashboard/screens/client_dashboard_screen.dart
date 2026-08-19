@@ -9,6 +9,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../jobs/screens/job_location_picker_screen.dart';
 import '../../../core/utils/location_helper.dart';
 import '../../../providers/client_dashboard_provider.dart';
+import '../../../providers/client_profile_provider.dart';
 
 // ============================================================================
 // DOMAIN MODELS (Mock Data Structures)
@@ -345,6 +346,23 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                     latitude: lat,
                     longitude: lng,
                   );
+
+                  // Synchronize location directly with client profile provider and backend
+                  final currentProfile = ref.read(clientProfileProvider).asData?.value;
+                  final currentAuthUser = ref.read(authProvider).user;
+                  final fullName = (currentProfile?.fullName.isNotEmpty == true)
+                      ? currentProfile!.fullName
+                      : (currentAuthUser?.fullName ?? '');
+                  final phone = (currentProfile?.phoneNumber.isNotEmpty == true)
+                      ? currentProfile!.phoneNumber
+                      : (currentAuthUser?.phoneNumber ?? '');
+                  if (fullName.isNotEmpty) {
+                    ref.read(clientProfileProvider.notifier).updateProfile(
+                      fullName: fullName,
+                      phoneNumber: phone,
+                      location: approxLocation,
+                    );
+                  }
                 }
               }
             },

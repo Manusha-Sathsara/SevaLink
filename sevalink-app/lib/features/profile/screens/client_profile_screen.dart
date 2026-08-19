@@ -41,25 +41,35 @@ class _ClientProfileScreenState extends ConsumerState<ClientProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(clientProfileProvider);
-    final clientId = ref.watch(authProvider).user?.id ?? 0;
+    final authState = ref.watch(authProvider);
+    final clientId = authState.user?.id ?? 0;
     final jobStatsAsync = ref.watch(clientJobStatsProvider(clientId));
 
     String fullName = 'Loading...';
     String email = 'Loading...';
     String phone = 'Loading...';
-    String location = 'Loading...';
+    String location = 'Not provided';
     String memberSince = 'Joined recently';
     String initials = 'U';
     String? networkImageUrl;
 
     if (profileState is AsyncData) {
       final profile = profileState.value!;
-      fullName = profile.fullName.isNotEmpty ? profile.fullName : 'Priya Desai';
-      email = profile.email.isNotEmpty ? profile.email : 'priya.desai@email.com';
-      phone = profile.phoneNumber.isNotEmpty ? profile.phoneNumber : 'Not provided';
-      location = profile.location?.isNotEmpty == true ? profile.location! : 'Not provided';
+      fullName = profile.fullName.isNotEmpty ? profile.fullName : (authState.user?.fullName ?? 'Priya Desai');
+      email = profile.email.isNotEmpty ? profile.email : (authState.user?.email ?? 'priya.desai@email.com');
+      phone = profile.phoneNumber.isNotEmpty ? profile.phoneNumber : (authState.user?.phoneNumber ?? 'Not provided');
+      location = profile.location?.isNotEmpty == true
+          ? profile.location!
+          : (authState.profileExtra.location.isNotEmpty ? authState.profileExtra.location : 'Not provided');
       initials = _getInitials(fullName);
-      networkImageUrl = profile.profileImageUrl;
+      networkImageUrl = profile.profileImageUrl ?? authState.profileExtra.profileImagePath;
+    } else if (authState.user != null) {
+      fullName = authState.user!.fullName;
+      email = authState.user!.email;
+      phone = authState.user!.phoneNumber.isNotEmpty ? authState.user!.phoneNumber : 'Not provided';
+      location = authState.profileExtra.location.isNotEmpty ? authState.profileExtra.location : 'Not provided';
+      initials = _getInitials(fullName);
+      networkImageUrl = authState.profileExtra.profileImagePath;
     } else if (profileState is AsyncError) {
       fullName = 'Error loading profile';
     }
@@ -326,13 +336,11 @@ class _ClientProfileScreenState extends ConsumerState<ClientProfileScreen> {
             data: (stats) {
               final jobsPosted = stats['total']?.toString() ?? '0';
               final completed = stats['done']?.toString() ?? '0';
-              final avgRating = stats['averageRating']?.toString() ?? stats['average_rating']?.toString() ?? '0.0';
               return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildStatColumn(jobsPosted, 'Jobs Posted'),
                   _buildStatColumn(completed, 'Completed'),
-                  _buildStatColumn(avgRating, 'Avg Rating'),
                 ],
               );
             },
