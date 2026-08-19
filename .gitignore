@@ -28,4 +28,7 @@ replay_pid*
 # Firebase service account credentials key (Private Key)
 **/firebase-service-account.json
 
+# Local notes and defense guides
+VIVA_GUIDE.md
+
 sevalink-backend/uploads/a5b5dc16-1d0d-4372-a859-ecf90f4bd1b3.jpg
